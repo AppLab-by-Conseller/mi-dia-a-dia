@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mi Día a Día</title>
+    <style>
+        /* Estilos básicos para el estado de carga */
+        body { font-family: sans-serif; }
+        #root { display: none; }
+        #loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            text-align: center;
+        }
+        #loading-message { font-size: 1.2em; color: #555; }
+        #loading-progress { margin-top: 1em; color: #888; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <div id="loading-container">
+        <div id="loading-message">Cargando aplicación...</div>
+        <div id="loading-progress"></div>
+    </div>
+
+    <script type="text/babel" id="app-script">
+        // ============== VARIABLES GLOBALES Y CONSTANTES ==============
+        // Estas variables se deben definir en el entorno donde se inserte el widget
+        // Ejemplo:
+        // const __initial_auth_token = 'tu-token-de-autenticacion';
+        // const __app_id = 'tu-app-id';
+        
+        const { ChakraProvider, extendTheme } = ChakraUI;
+        const {
+            Box, Button, Flex, FormControl, FormErrorMessage, Heading, Input, Stack, Text,
+            VStack, Container, Textarea, Select, IconButton, useToast
+        } = ChakraUI;
+        const { AddIcon, EditIcon, DeleteIcon } = ChakraUIIcons;
+        const { BrowserRouter, Routes, Route, Navigate, Link } = ReactRouterDOM;
+
+        // ============== ICONOS ==============
+        const Frown = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M16 16s-1.5-2-4-2-4 2-4 2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>;
+        const Meh = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="8" y1="15" x2="16" y2="15"></line><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>;
+        const Smile = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>;
+
+        // ============== FIREBASE CONFIG ==============
+        const firebaseConfig = {
+            apiKey: "AIzaSyAin1VRoE6dV_7yUek2xVInBArbBUtrkhQ",
+            authDomain: "planificador-personal-575e4.firebaseapp.com",
+            projectId: "planificador-personal-575e4",
+            storageBucket: "planificador-personal-575e4.appspot.com",
+            messagingSenderId: "488328304040",
+            appId: "1:488328304040:web:c26a185f576a71a249b99d",
+            measurementId: "G-KT111WDJKV"
+        };
+
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore(app);
+        const auth = firebase.auth(app);
+
+        // ============== HOOKS ==============
+        const { useState, useEffect, useMemo } = React;
+
+        function useAuth() {
+            const [user, setUser] = useState(null);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                const unsubscribe = auth.onAuthStateChanged(async (user) => {
+                    if (user) {
+                        setUser(user);
+                    } else {
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            try {
+                                await auth.signInWithCustomToken(__initial_auth_token);
+                            } catch (error) {
+                                console.error("Error signing in with custom token:", error);
+                                setUser(null);
+                            }
+                        } else {
+                            setUser(null);
+                        }
+                    }
+                    setLoading(false);
+                });
+                return () => unsubscribe();
+            }, []);
+
+            return { user, loading };
+        }
+
+        function useFirestore(userId) {
+            const [tasks, setTasks] = useState([]);
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            const tasksCollectionPath = `artifacts/${appId}/users/${userId}/tasks`;
+
+            useEffect(() => {
+                if (!userId) {
+                    setTasks([]);
+                    return;
+                }
+
+                const q = db.collection(tasksCollectionPath).where("userId", "==", userId);
+                
+                const unsubscribe = q.onSnapshot((snapshot) => {
+                    const tasksData = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data(),
+                        date: doc.data().date.toDate()
+                    }));
+                    tasksData.sort((a, b) => {
+                        if (a.scheduledTime && b.scheduledTime) {
+                            return a.scheduledTime.localeCompare(b.scheduledTime);
+                        }
+                        return a.createdAt - b.createdAt;
+                    });
+                    setTasks(tasksData);
+                }, (error) => {
+                    console.error("Error al obtener las tareas:", error);
+                });
+
+                return () => unsubscribe();
+            }, [userId, tasksCollectionPath]);
+
+            const addTask = async (text, scheduledTime, currentDate) => {
+                try {
+                    await db.collection(tasksCollectionPath).add({
+                        text,
+                        scheduledTime,
+                        completionState: 'pending',
+                        mood: null,
+                        comments: '',
+                        userId: userId,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        date: firebase.firestore.Timestamp.fromDate(currentDate)
+                    });
+                } catch (error) {
+                    console.error("Error al añadir la tarea:", error);
+                }
+            };
+
+            const updateTask = async (id, updates) => {
+                const taskRef = db.collection(tasksCollectionPath).doc(id);
+                try {
+                    await taskRef.update(updates);
+                } catch (error) {
+                    console.error("Error al actualizar la tarea:", error);
+                }
+            };
+
+            const deleteTask = async (id) => {
+                const taskRef = db.collection(tasksCollectionPath).doc(id);
+                try {
+                    await taskRef.delete();
+                } catch (error) {
+                    console.error("Error al borrar la tarea:", error);
+                }
+            };
+
+            return { tasks, addTask, updateTask, deleteTask };
+        }
+
+        // ============== COMPONENTES ==============
+
+        const ExportButton = ({ elementId, fileName = "mi-dia-a-dia.pdf" }) => {
+            const [isExporting, setIsExporting] = useState(false);
+            const toast = useToast();
+
+            const handleExport = () => {
+                const captureElement = document.getElementById(elementId);
+                if (!captureElement) {
+                    toast({
+                        title: "Error",
+                        description: "No se pudo encontrar el contenido para exportar.",
+                        status: "error",
+                        duration: 5000,
+                        isClosable: true,
+                    });
+                    return;
+                }
+
+                setIsExporting(true);
+
+                html2canvas(captureElement, {
+                    useCORS: true,
+                    scale: 2,
+                    backgroundColor: '#f7fafc',
+                })
+                .then(canvas => {
+                    const { jsPDF } = window.jspdf;
+                    const pdf = new jsPDF({
+                        orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+                        unit: 'px',
+                        format: [canvas.width, canvas.height]
+                    });
+                    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, canvas.width, canvas.height);
+                    pdf.save(fileName);
+                    toast({
+                        title: "¡Éxito!",
+                        description: "PDF generado correctamente.",
+                        status: "success",
+                        duration: 3000,
+                        isClosable: true,
+                    });
+                })
+                .catch(err => {
+                    console.error("Error al exportar a PDF:", err);
+                    toast({
+                        title: "Error de exportación",
+                        description: "Hubo un problema al generar el PDF.",
+                        status: "error",
+                        duration: 5000,
+                        isClosable: true,
+                    });
+                })
+                .finally(() => {
+                    setIsExporting(false);
+                });
+            };
+
+            return (
+                <Button
+                    colorScheme="green"
+                    onClick={handleExport}
+                    isLoading={isExporting}
+                    loadingText="Exportando..."
+                >
+                    Descargar Vista como PDF
+                </Button>
+            );
+        };
+
+        const TaskCard = ({ task, onUpdate, onDelete }) => {
+            const [isEditing, setIsEditing] = useState(false);
+            const [editText, setEditText] = useState(task.text);
+            const [editTime, setEditTime] = useState(task.scheduledTime || '');
+
+            const handleUpdate = () => {
+                onUpdate(task.id, { text: editText, scheduledTime: editTime });
+                setIsEditing(false);
+            };
+
+            const completionStatusOptions = {
+                pending: { label: 'Pendiente', bg: 'gray.200', color: 'gray.800' },
+                completed: { label: 'Realizada', bg: 'green.200', color: 'green.800' },
+                partial: { label: 'Parcialmente', bg: 'yellow.200', color: 'yellow.800' },
+                abandoned: { label: 'Abandonada', bg: 'red.200', color: 'red.800' },
+            };
+
+            const moodOptions = {
+                happy: { icon: <Smile />, color: 'green.500' },
+                neutral: { icon: <Meh />, color: 'yellow.500' },
+                sad: { icon: <Frown />, color: 'blue.500' },
+            };
+
+            const currentStatus = completionStatusOptions[task.completionState];
+
+            return (
+                <Box
+                    bg="white"
+                    borderRadius="xl"
+                    boxShadow="md"
+                    p={4}
+                    mb={4}
+                    borderWidth="1px"
+                    transition="box-shadow 0.3s"
+                    _hover={{ boxShadow: 'lg' }}
+                >
+                    {isEditing ? (
+                        <Stack spacing={3}>
+                            <Input
+                                type="time"
+                                value={editTime}
+                                onChange={(e) => setEditTime(e.target.value)}
+                            />
+                            <Textarea
+                                value={editText}
+                                onChange={(e) => setEditText(e.target.value)}
+                                rows={2}
+                            />
+                            <Flex justify="flex-end" gap={2}>
+                                <Button size="sm" onClick={() => setIsEditing(false)}>Cancelar</Button>
+                                <Button size="sm" colorScheme="blue" onClick={handleUpdate}>Guardar</Button>
+                            </Flex>
+                        </Stack>
+                    ) : (
+                        <Stack spacing={4}>
+                            <Flex justify="space-between" align="flex-start">
+                                <Box>
+                                    {task.scheduledTime && <Heading as="p" size="md" color="blue.600">{task.scheduledTime}</Heading>}
+                                    <Text fontSize="lg" wordBreak="break-word">{task.text}</Text>
+                                </Box>
+                                <Flex gap={2}>
+                                   <IconButton icon={<EditIcon />} size="sm" aria-label="Editar tarea" onClick={() => setIsEditing(true)} />
+                                   <IconButton icon={<DeleteIcon />} size="sm" aria-label="Eliminar tarea" colorScheme="red" variant="ghost" onClick={() => onDelete(task.id)} />
+                                </Flex>
+                            </Flex>
+
+                            <Box>
+                                <Text fontSize="sm" fontWeight="semibold" color="gray.600" mb={2}>¿Cómo te sentiste?</Text>
+                                <Stack direction="row" spacing={3}>
+                                    {Object.entries(moodOptions).map(([key, { icon, color }]) => (
+                                        <IconButton
+                                            key={key}
+                                            icon={icon}
+                                            isRound
+                                            aria-label={`Estado de ánimo ${key}`}
+                                            onClick={() => onUpdate(task.id, { mood: key })}
+                                            color={color}
+                                            bg={task.mood === key ? 'blue.100' : 'gray.100'}
+                                            transform={task.mood === key ? 'scale(1.1)' : 'none'}
+                                            _hover={{ bg: 'gray.200' }}
+                                        />
+                                    ))}
+                                </Stack>
+                            </Box>
+
+                            <Box>
+                                 <Text fontSize="sm" fontWeight="semibold" color="gray.600" mb={2}>Estado de la tarea</Text>
+                                 <Select
+                                    value={task.completionState}
+                                    onChange={(e) => onUpdate(task.id, { completionState: e.target.value })}
+                                    bg={currentStatus.bg}
+                                    color={currentStatus.color}
+                                    fontWeight="medium"
+                                    border="none"
+                                >
+                                    {Object.entries(completionStatusOptions).map(([key, { label }]) => (
+                                        <option key={key} value={key} style={{ backgroundColor: 'white', color: 'black' }}>{label}</option>
+                                    ))}
+                                </Select>
+                            </Box>
+
+                            <Box>
+                                <Textarea
+                                    placeholder="Añade un comentario..."
+                                    value={task.comments || ''}
+                                    onChange={(e) => onUpdate(task.id, { comments: e.target.value })}
+                                    fontSize="sm"
+                                    bg="gray.50"
+                                    _focus={{ bg: 'white' }}
+                                    rows={2}
+                                />
+                            </Box>
+                        </Stack>
+                    )}
+                </Box>
+            );
+        };
+
+        const AddTaskForm = ({ onAddTask }) => {
+            const [text, setText] = useState('');
+            const [time, setTime] = useState('');
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (text.trim()) {
+                    onAddTask(text, time);
+                    setText('');
+                    setTime('');
+                }
+            };
+
+            return (
+                <Box
+                    as="form"
+                    onSubmit={handleSubmit}
+                    p={4}
+                    bg="white"
+                    borderRadius="xl"
+                    boxShadow="lg"
+                    mb={6}
+                    borderWidth={1}
+                >
+                    <Heading as="h3" size="md" mb={3} color="gray.700">
+                        Añadir una nueva tarea para cuidarte
+                    </Heading>
+                    <Stack direction={{ base: 'column', md: 'row' }} spacing={2}>
+                        <Input
+                            type="time"
+                            value={time}
+                            onChange={(e) => setTime(e.target.value)}
+                            flexShrink={0}
+                        />
+                        <Input
+                            type="text"
+                            value={text}
+                            onChange={(e) => setText(e.target.value)}
+                            placeholder="Ej: Preparar el desayuno"
+                        />
+                        <Button
+                            type="submit"
+                            colorScheme="blue"
+                            leftIcon={<AddIcon />}
+                            px={8}
+                        >
+                            Añadir
+                        </Button>
+                    </Stack>
+                </Box>
+            );
+        };
+
+        const PlannerScreen = ({ user }) => {
+            const [currentDate, setCurrentDate] = useState(new Date());
+            const { tasks, addTask, updateTask, deleteTask } = useFirestore(user.uid);
+            
+            const handleAddTask = (text, scheduledTime) => {
+                addTask(text, scheduledTime, currentDate);
+            };
+
+            const changeDate = (days) => {
+                setCurrentDate(prevDate => {
+                    const newDate = new Date(prevDate);
+                    newDate.setDate(newDate.getDate() + days);
+                    return newDate;
+                });
+            };
+            
+            const filteredTasks = useMemo(() => {
+                return tasks.filter(task => {
+                    const taskDate = task.date;
+                    return taskDate.getFullYear() === currentDate.getFullYear() &&
+                           taskDate.getMonth() === currentDate.getMonth() &&
+                           taskDate.getDate() === currentDate.getDate();
+                });
+            }, [tasks, currentDate]);
+
+            const formattedDate = new Intl.DateTimeFormat('es-ES', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            }).format(currentDate);
+
+            return (
+                <Box bg="gray.50" minH="100vh" p={{ base: 4, sm: 6, lg: 8 }}>
+                    <Container maxW="3xl">
+                        <Box id="content-to-export" bg="gray.50">
+                            <Flex as="header" justify="space-between" align="center" mb={6}>
+                                <Heading as="h1" size={{ base: 'lg', sm: 'xl' }} color="gray.800">
+                                    Mi Día a Día
+                                </Heading>
+                                <Button colorScheme="red" onClick={() => auth.signOut()}>
+                                    Cerrar Sesión
+                                </Button>
+                            </Flex>
+                            
+                            <VStack spacing={6} align="stretch">
+                                <Flex 
+                                    bg="white" 
+                                    p={4} 
+                                    borderRadius="xl" 
+                                    boxShadow="md" 
+                                    justify="space-between" 
+                                    align="center"
+                                >
+                                    <Button onClick={() => changeDate(-1)}>Anterior</Button>
+                                    <Heading as="h2" size="lg" textAlign="center" color="blue.700">
+                                        {formattedDate}
+                                    </Heading>
+                                    <Button onClick={() => changeDate(1)}>Siguiente</Button>
+                                </Flex>
+
+                                <AddTaskForm onAddTask={handleAddTask} />
+
+                                <Box>
+                                    {filteredTasks.length > 0 ? (
+                                        <VStack spacing={4} align="stretch">
+                                            {filteredTasks.map(task => (
+                                                <TaskCard key={task.id} task={task} onUpdate={updateTask} onDelete={deleteTask} />
+                                            ))}
+                                        </VStack>
+                                    ) : (
+                                        <Box 
+                                            textAlign="center" 
+                                            p={10} 
+                                            bg="white" 
+                                            borderRadius="xl" 
+                                            boxShadow="md" 
+                                            borderWidth="1px"
+                                        >
+                                            <Text color="gray.500">No hay tareas para este día.</Text>
+                                            <Text color="gray.500" mt={2}>¡Añade una para empezar a planificar tu bienestar!</Text>
+                                        </Box>
+                                    )}
+                                </Box>
+                            </VStack>
+                        </Box>
+                        <Flex justify="center" mt={8}>
+                            <ExportButton elementId="content-to-export" />
+                        </Flex>
+                    </Container>
+                </Box>
+            );
+        };
+
+        const AuthScreen = () => {
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [isLogin, setIsLogin] = useState(true);
+            const [error, setError] = useState('');
+            const [loading, setLoading] = useState(false);
+            const toast = useToast();
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setError('');
+                setLoading(true);
+                try {
+                    if (isLogin) {
+                        await auth.signInWithEmailAndPassword(email, password);
+                    } else {
+                        await auth.createUserWithEmailAndPassword(email, password);
+                    }
+                    toast({
+                        title: `¡${isLogin ? 'Inicio de sesión' : 'Registro'} exitoso!`,
+                        status: 'success',
+                        duration: 3000,
+                        isClosable: true,
+                    });
+                } catch (err) {
+                    setError(err.message);
+                    toast({
+                        title: 'Error de autenticación',
+                        description: err.message,
+                        status: 'error',
+                        duration: 5000,
+                        isClosable: true,
+                    });
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <Flex minH="100vh" align="center" justify="center" bg="gray.50">
+                    <Box
+                        as="form"
+                        onSubmit={handleSubmit}
+                        p={8}
+                        maxW="md"
+                        borderWidth={1}
+                        borderRadius="xl"
+                        boxShadow="lg"
+                        bg="white"
+                        w="full"
+                    >
+                        <Stack spacing={6}>
+                            <Box textAlign="center">
+                                <Heading as="h2" size="xl">
+                                    {isLogin ? 'Bienvenida/o de nuevo' : 'Crea tu cuenta'}
+                                </Heading>
+                                <Text mt={2} color="gray.600">
+                                    Un espacio seguro para organizar tu día.
+                                </Text>
+                            </Box>
+                            
+                            <FormControl isInvalid={error}>
+                                <Input
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    placeholder="Correo electrónico"
+                                    required
+                                    size="lg"
+                                />
+                            </FormControl>
+
+                            <FormControl isInvalid={error}>
+                                <Input
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="Contraseña"
+                                    required
+                                    size="lg"
+                                />
+                                {error && <FormErrorMessage>{error}</FormErrorMessage>}
+                            </FormControl>
+
+                            <Button
+                                type="submit"
+                                colorScheme="blue"
+                                size="lg"
+                                isLoading={loading}
+                                w="full"
+                            >
+                                {isLogin ? 'Iniciar Sesión' : 'Registrarse'}
+                            </Button>
+
+                            <Text textAlign="center">
+                                {isLogin ? '¿No tienes una cuenta?' : '¿Ya tienes una cuenta?'}
+                                <Button
+                                    variant="link"
+                                    colorScheme="blue"
+                                    ml={2}
+                                    onClick={() => {
+                                        setIsLogin(!isLogin);
+                                        setError('');
+                                    }}
+                                >
+                                    {isLogin ? 'Regístrate' : 'Inicia Sesión'}
+                                </Button>
+                            </Text>
+                        </Stack>
+                    </Box>
+                </Flex>
+            );
+        };
+
+        // ============== APP PRINCIPAL ==============
+        const PrivateRoute = ({ children }) => {
+            const { user } = useAuth();
+            return user ? children : <Navigate to="/login" />;
+        };
+
+        function App() {
+            const { user, loading } = useAuth();
+
+            if (loading) {
+                return (
+                    <Flex minH="100vh" align="center" justify="center" bg="gray.50">
+                        <Text fontSize="lg" color="gray.600">Cargando...</Text>
+                    </Flex>
+                );
+            }
+
+            return (
+                <Routes>
+                    <Route path="/login" element={user ? <Navigate to="/" /> : <AuthScreen />} />
+                    <Route 
+                        path="/" 
+                        element={
+                            <PrivateRoute>
+                                <PlannerScreen user={user} />
+                            </PrivateRoute>
+                        } 
+                    />
+                </Routes>
+            );
+        }
+
+        // ============== RENDER ==============
+        function runApp() {
+            const theme = extendTheme({
+                styles: {
+                    global: {
+                        'html, body': {
+                            backgroundColor: 'gray.50',
+                        },
+                    },
+                },
+            });
+
+            const container = document.getElementById('root');
+            const root = ReactDOM.createRoot(container);
+            root.render(
+                <ChakraProvider theme={theme}>
+                    <BrowserRouter>
+                        <App />
+                    </BrowserRouter>
+                </ChakraProvider>
+            );
+        }
+    </script>
+
+    <script>
+        (function() {
+            const loadingContainer = document.getElementById('loading-container');
+            const loadingMessage = document.getElementById('loading-message');
+            const loadingProgress = document.getElementById('loading-progress');
+            const rootContainer = document.getElementById('root');
+
+            const scripts = [
+                { name: 'React', url: 'https://unpkg.com/react@18/umd/react.development.js' },
+                { name: 'React DOM', url: 'https://unpkg.com/react-dom@18/umd/react-dom.development.js' },
+                { name: 'Babel', url: 'https://unpkg.com/@babel/standalone/babel.min.js' },
+                { name: 'Firebase App', url: 'https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js' },
+                { name: 'Firebase Auth', url: 'https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js' },
+                { name: 'Firebase Firestore', url: 'https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js' },
+                { name: 'Framer Motion', url: 'https://unpkg.com/framer-motion@7.10.2/dist/framer-motion.umd.js' },
+                { name: 'Emotion React', url: 'https://unpkg.com/@emotion/react@11.10.5/dist/emotion-react.umd.min.js' },
+                { name: 'Emotion Styled', url: 'https://unpkg.com/@emotion/styled@11.10.5/dist/emotion-styled.umd.min.js' },
+                { name: 'Chakra UI Icons', url: 'https://unpkg.com/@chakra-ui/icons@2.0.12/dist/chakra-ui-icons.umd.min.js' },
+                { name: 'Chakra UI', url: 'https://unpkg.com/@chakra-ui/react@2.4.2/dist/chakra-ui-react.umd.min.js' },
+                { name: 'React Router', url: 'https://unpkg.com/react-router-dom@6.4.4/umd/react-router-dom.development.js' },
+                { name: 'html2canvas', url: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js' },
+                { name: 'jsPDF', url: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js' }
+            ];
+
+            function loadScript(url) {
+                return new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = url;
+                    script.onload = resolve;
+                    script.onerror = () => reject(new Error(`Error al cargar el script: ${url}`));
+                    document.head.appendChild(script);
+                });
+            }
+
+            async function loadAllScripts() {
+                for (let i = 0; i < scripts.length; i++) {
+                    const script = scripts[i];
+                    loadingProgress.textContent = `Cargando ${script.name} (${i + 1}/${scripts.length})...`;
+                    try {
+                        await loadScript(script.url);
+                    } catch (error) {
+                        loadingMessage.textContent = 'Error en la carga';
+                        loadingProgress.textContent = error.message;
+                        console.error(error);
+                        return;
+                    }
+                }
+
+                loadingMessage.textContent = 'Inicializando aplicación...';
+                loadingProgress.textContent = '';
+
+                try {
+                    const appScriptContent = document.getElementById('app-script').textContent;
+                    const transformedCode = Babel.transform(appScriptContent, { presets: ['react'] }).code;
+                    
+                    const scriptElement = document.createElement('script');
+                    scriptElement.textContent = transformedCode;
+                    document.body.appendChild(scriptElement);
+
+                    // Ocultar el mensaje de carga y mostrar la app
+                    loadingContainer.style.display = 'none';
+                    rootContainer.style.display = 'block';
+
+                    // Ejecutar la función principal de la app
+                    if (typeof runApp === 'function') {
+                        runApp();
+                    } else {
+                        throw new Error('La función runApp no se encontró después de la transpilación.');
+                    }
+
+                } catch (error) {
+                    loadingMessage.textContent = 'Error al iniciar la aplicación.';
+                    loadingProgress.innerHTML = `<pre style="text-align: left; background: #eee; padding: 1em;">${error.message}</pre>`;
+                    console.error('Error al transpilar o ejecutar el script de la aplicación:', error);
+                }
+            }
+
+            loadAllScripts();
+        })();
+    </script>
+</body>
+</html>
