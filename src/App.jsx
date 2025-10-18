@@ -5,8 +5,7 @@ import AuthScreen from './components/auth/AuthScreen';
 import PlannerScreen from './components/planner/PlannerScreen';
 
 // Componente para rutas privadas
-const PrivateRoute = ({ children }) => {
-    const { user } = useAuth();
+const PrivateRoute = ({ user, children }) => {
     return user ? children : <Navigate to="/login" />;
 };
 
@@ -28,7 +27,7 @@ export default function App() {
             <Route 
                 path="/" 
                 element={
-                    <PrivateRoute>
+                    <PrivateRoute user={user}>
                         <PlannerScreen user={user} />
                     </PrivateRoute>
                 } 
