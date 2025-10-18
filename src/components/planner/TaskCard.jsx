@@ -1,123 +1,166 @@
-import React, { useState } from 'react';
-import { Box, Button, Flex, Heading, IconButton, Input, Select, Stack, Text, Textarea } from '@chakra-ui/react';
-import { EditIcon, DeleteIcon } from '@chakra-ui/icons';
-import { Smile, Meh, Frown } from '../icons';
+import React, { useEffect, useState } from 'react';
+import {
+    Box, Button, Container, Flex, Heading, Text, VStack,
+    Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton,
+    useDisclosure, FormControl, FormLabel, Input, Select, Textarea, SimpleGrid, IconButton
+} from '@chakra-ui/react';
+import { EditIcon, Trash2 } from 'lucide-react';
+import { FaRegSadTear, FaRegFrown, FaRegMeh, FaRegSmile, FaRegGrinBeam } from 'react-icons/fa';
+
+const moodOptions = {
+    terrible: { icon: <FaRegSadTear />, color: 'red.500', label: 'Terrible' },
+    mal: { icon: <FaRegFrown />, color: 'orange.500', label: 'Mal' },
+    normal: { icon: <FaRegMeh />, color: 'yellow.500', label: 'Normal' },
+    bien: { icon: <FaRegSmile />, color: 'teal.500', label: 'Bien' },
+    genial: { icon: <FaRegGrinBeam />, color: 'green.500', label: 'Genial' },
+};
+
+const completionStatusOptions = {
+    pending: { label: 'Pendiente', bg: 'gray.200', color: 'gray.800' },
+    completed: { label: 'Realizada', bg: 'green.200', color: 'green.800' },
+    partial: { label: 'Parcialmente', bg: 'yellow.200', color: 'yellow.800' },
+    abandoned: { label: 'Abandonada', bg: 'red.200', color: 'red.800' },
+};
 
 const TaskCard = ({ task, onUpdate, onDelete }) => {
-    const [isEditing, setIsEditing] = useState(false);
-    const [editText, setEditText] = useState(task.text);
-    const [editTime, setEditTime] = useState(task.scheduledTime || '');
+    const { isOpen, onOpen, onClose } = useDisclosure();
+    const [editedTask, setEditedTask] = useState(task);
+
+    useEffect(() => {
+        setEditedTask(task);
+    }, [task]);
 
     const handleUpdate = () => {
-        onUpdate(task.id, { text: editText, scheduledTime: editTime });
-        setIsEditing(false);
+        onUpdate(task.id, editedTask);
+        onClose();
     };
 
-    const completionStatusOptions = {
-        pending: { label: 'Pendiente', bg: 'gray.200', color: 'gray.800' },
-        completed: { label: 'Realizada', bg: 'green.200', color: 'green.800' },
-        partial: { label: 'Parcialmente', bg: 'yellow.200', color: 'yellow.800' },
-        abandoned: { label: 'Abandonada', bg: 'red.200', color: 'red.800' },
+    const handleDelete = () => {
+        onDelete(task.id);
+        onClose();
+    }
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setEditedTask(prev => ({ ...prev, [name]: value }));
+    };
+    
+    const handleMoodChange = (mood) => {
+        onUpdate(task.id, { mood });
     };
 
-    const moodOptions = {
-        happy: { icon: <Smile />, color: 'green.500' },
-        neutral: { icon: <Meh />, color: 'yellow.500' },
-        sad: { icon: <Frown />, color: 'blue.500' },
+    const handleStatusChange = (e) => {
+        onUpdate(task.id, { completionState: e.target.value });
+    };
+    
+    const handleCommentsChange = (e) => {
+        onUpdate(task.id, { comments: e.target.value });
     };
 
     const currentStatus = completionStatusOptions[task.completionState];
 
     return (
-        <Box
-            bg="white"
-            borderRadius="xl"
-            boxShadow="md"
-            p={4}
-            mb={4}
-            borderWidth="1px"
-            transition="box-shadow 0.3s"
-            _hover={{ boxShadow: 'lg' }}
-        >
-            {isEditing ? (
-                <Stack spacing={3}>
-                    <Input
-                        type="time"
-                        value={editTime}
-                        onChange={(e) => setEditTime(e.target.value)}
-                    />
-                    <Textarea
-                        value={editText}
-                        onChange={(e) => setEditText(e.target.value)}
-                        rows={2}
-                    />
-                    <Flex justify="flex-end" gap={2}>
-                        <Button size="sm" onClick={() => setIsEditing(false)}>Cancelar</Button>
-                        <Button size="sm" colorScheme="blue" onClick={handleUpdate}>Guardar</Button>
+        <>
+            <Box
+                p={4}
+                bg="white"
+                shadow="md"
+                borderWidth="1px"
+                borderRadius="lg"
+                _hover={{ shadow: "lg", cursor: "pointer" }}
+                onClick={onOpen}
+            >
+                <Flex justify="space-between" align="center">
+                    <Box>
+                        {task.scheduledTime && <Text fontSize="sm" color="gray.500">{task.scheduledTime}</Text>}
+                        <Text fontWeight="bold">{task.text}</Text>
+                    </Box>
+                    <Flex gap={2}>
+                        <IconButton icon={<EditIcon size="16" />} aria-label="Editar" size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); onOpen(); }} />
+                        <IconButton icon={<Trash2 size="16" />} aria-label="Eliminar" size="sm" variant="ghost" colorScheme="red" onClick={(e) => { e.stopPropagation(); onDelete(task.id); }} />
                     </Flex>
-                </Stack>
-            ) : (
-                <Stack spacing={4}>
-                    <Flex justify="space-between" align="flex-start">
-                        <Box>
-                            {task.scheduledTime && <Heading as="p" size="md" color="blue.600">{task.scheduledTime}</Heading>}
-                            <Text fontSize="lg" wordBreak="break-word">{task.text}</Text>
-                        </Box>
-                        <Flex gap={2}>
-                           <IconButton icon={<EditIcon />} size="sm" aria-label="Editar tarea" onClick={() => setIsEditing(true)} />
-                           <IconButton icon={<DeleteIcon />} size="sm" aria-label="Eliminar tarea" colorScheme="red" variant="ghost" onClick={() => onDelete(task.id)} />
-                        </Flex>
-                    </Flex>
+                </Flex>
+            </Box>
 
-                    <Box>
-                        <Text fontSize="sm" fontWeight="semibold" color="gray.600" mb={2}>¿Cómo te sentiste?</Text>
-                        <Stack direction="row" spacing={3}>
-                            {Object.entries(moodOptions).map(([key, { icon, color }]) => (
-                                <IconButton
-                                    key={key}
-                                    icon={icon}
-                                    isRound
-                                    aria-label={`Estado de ánimo ${key}`}
-                                    onClick={() => onUpdate(task.id, { mood: key })}
-                                    color={color}
-                                    bg={task.mood === key ? 'blue.100' : 'gray.100'}
-                                    transform={task.mood === key ? 'scale(1.1)' : 'none'}
-                                    _hover={{ bg: 'gray.200' }}
-                                />
-                            ))}
-                        </Stack>
-                    </Box>
-
-                    <Box>
-                         <Text fontSize="sm" fontWeight="semibold" color="gray.600" mb={2}>Estado de la tarea</Text>
-                         <Select
-                            value={task.completionState}
-                            onChange={(e) => onUpdate(task.id, { completionState: e.target.value })}
-                            bg={currentStatus.bg}
-                            color={currentStatus.color}
-                            fontWeight="medium"
-                            border="none"
-                        >
-                            {Object.entries(completionStatusOptions).map(([key, { label }]) => (
-                                <option key={key} value={key} style={{ backgroundColor: 'white', color: 'black' }}>{label}</option>
-                            ))}
-                        </Select>
-                    </Box>
-
-                    <Box>
-                        <Textarea
-                            placeholder="Añade un comentario..."
-                            value={task.comments || ''}
-                            onChange={(e) => onUpdate(task.id, { comments: e.target.value })}
-                            fontSize="sm"
-                            bg="gray.50"
-                            _focus={{ bg: 'white' }}
-                            rows={2}
-                        />
-                    </Box>
-                </Stack>
-            )}
-        </Box>
+            <Modal isOpen={isOpen} onClose={onClose} size="xl">
+                <ModalOverlay />
+                <ModalContent>
+                    <ModalHeader>Detalles de la Tarea</ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody>
+                        <VStack spacing={4} align="stretch">
+                            <FormControl>
+                                <FormLabel>Actividad</FormLabel>
+                                <Input name="text" value={editedTask.text} onChange={handleInputChange} />
+                            </FormControl>
+                            <SimpleGrid columns={2} spacing={4}>
+                                <FormControl>
+                                    <FormLabel>Hora</FormLabel>
+                                    <Input type="time" name="scheduledTime" value={editedTask.scheduledTime || ''} onChange={handleInputChange} />
+                                </FormControl>
+                                <FormControl>
+                                    <FormLabel>Duración (min)</FormLabel>
+                                    <Input type="number" name="duration" value={editedTask.duration || ''} onChange={handleInputChange} />
+                                </FormControl>
+                            </SimpleGrid>
+                             <FormControl>
+                                <FormLabel>Recurrencia</FormLabel>
+                                <Select name="recurrence" value={editedTask.recurrence || 'no-repite'} onChange={handleInputChange}>
+                                    <option value="no-repite">No se repite</option>
+                                    <option value="diaria">Diaria</option>
+                                    <option value="semanal">Semanal</option>
+                                    <option value="mensual">Mensual</option>
+                                </Select>
+                            </FormControl>
+                            <FormControl>
+                                <FormLabel>¿Cómo te sentiste?</FormLabel>
+                                <Flex justify="space-around">
+                                    {Object.entries(moodOptions).map(([key, { icon, color, label }]) => (
+                                        <VStack key={key} spacing={1}>
+                                            <IconButton
+                                                icon={icon}
+                                                isRound
+                                                aria-label={label}
+                                                onClick={() => handleMoodChange(key)}
+                                                color={color}
+                                                bg={task.mood === key ? 'blue.100' : 'gray.100'}
+                                                transform={task.mood === key ? 'scale(1.15)' : 'none'}
+                                                _hover={{ bg: 'gray.200' }}
+                                                size="lg"
+                                            />
+                                            <Text fontSize="xs">{label}</Text>
+                                        </VStack>
+                                    ))}
+                                </Flex>
+                            </FormControl>
+                             <FormControl>
+                                <FormLabel>Estado de la tarea</FormLabel>
+                                <Select value={task.completionState} onChange={handleStatusChange}>
+                                    {Object.entries(completionStatusOptions).map(([key, { label }]) => (
+                                        <option key={key} value={key}>{label}</option>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                            <FormControl>
+                                <FormLabel>Comentarios</FormLabel>
+                                <Textarea placeholder="Añade un comentario..." value={task.comments || ''} onChange={handleCommentsChange} />
+                            </FormControl>
+                        </VStack>
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button variant="ghost" mr={3} onClick={onClose}>
+                            Cerrar
+                        </Button>
+                        <Button colorScheme="red" mr={3} onClick={handleDelete}>
+                            Eliminar Tarea
+                        </Button>
+                        <Button colorScheme="blue" onClick={handleUpdate}>
+                            Guardar Cambios
+                        </Button>
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
+        </>
     );
 };
 
