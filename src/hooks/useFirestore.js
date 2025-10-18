@@ -44,19 +44,22 @@ export function useFirestore(userId) {
         });
 
         return () => unsubscribe();
-    }, [userId, tasksCollectionPath]);
+    }, [userId]);
 
-    const addTask = async (text, scheduledTime, currentDate) => {
+    const addTask = async (text, scheduledTime, currentDate, duration, recurrence) => {
+        if (!userId) return;
         try {
-            await addDoc(collection(db, tasksCollectionPath), {
+            await addDoc(collection(db, 'tasks'), {
                 text,
                 scheduledTime,
+                duration,
+                recurrence,
                 completionState: 'pending',
                 mood: null,
                 comments: '',
                 userId: userId,
-                createdAt: Timestamp.now(),
-                date: Timestamp.fromDate(currentDate)
+                createdAt: serverTimestamp(),
+                date: Timestamp.fromDate(currentDate),
             });
         } catch (error) {
             console.error("Error al añadir la tarea:", error);
