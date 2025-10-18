@@ -28,7 +28,6 @@ const ExportButton = ({ elementId, fileName = "mi-dia-a-dia.pdf" }) => {
             backgroundColor: '#f7fafc', // Corresponds to gray.50
         })
         .then(canvas => {
-            const { jsPDF } = require("jspdf");
             const pdf = new jsPDF({
                 orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
                 unit: 'px',

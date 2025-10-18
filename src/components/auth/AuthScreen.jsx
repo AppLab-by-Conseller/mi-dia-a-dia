@@ -15,7 +15,7 @@ import {
     Stack,
     Text,
 } from '@chakra-ui/react';
-import { useToast } from '@chakra-ui/system';
+import { useToast } from '@chakra-ui/react';
 
 const AuthScreen = () => {
     const [email, setEmail] = useState('');
