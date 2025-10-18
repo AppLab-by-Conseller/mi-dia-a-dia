@@ -4,33 +4,40 @@ import { signOut } from 'firebase/auth';
 import { useFirestore } from '../../hooks/useFirestore';
 import TaskCard from './TaskCard';
 import AddTaskForm from './AddTaskForm';
+import TaskList from './TaskList';
+import WellnessMetrics from './WellnessMetrics';
+import DailyReflection from './DailyReflection';
+import DateNavigator from './DateNavigator';
 import { Box, Button, Container, Flex, Heading, Text, VStack } from '@chakra-ui/react';
 import ExportButton from './ExportButton';
 
 const PlannerScreen = ({ user }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
-    const { tasks, addTask, updateTask, deleteTask } = useFirestore(user.uid);
+    const [viewMode, setViewMode] = useState('day'); // 'day', 'week', 'month'
+    const { tasks, addTask, updateTask, deleteTask, loading } = useFirestore(user?.uid);
     
-    const handleAddTask = (text, scheduledTime) => {
-        addTask(text, scheduledTime, currentDate);
+    const handleAddTask = (text, scheduledTime, duration, recurrence) => {
+        addTask(text, scheduledTime, currentDate, parseInt(duration, 10) || 0, recurrence);
     };
 
-    const changeDate = (days) => {
+    const changeDate = (amount) => {
         setCurrentDate(prevDate => {
             const newDate = new Date(prevDate);
-            newDate.setDate(newDate.getDate() + days);
+            if (viewMode === 'day') newDate.setDate(newDate.getDate() + amount);
+            if (viewMode === 'week') newDate.setDate(newDate.getDate() + amount * 7);
+            if (viewMode === 'month') newDate.setMonth(newDate.getMonth() + amount);
             return newDate;
         });
     };
-    
+
     const filteredTasks = useMemo(() => {
         return tasks.filter(task => {
-            const taskDate = task.date;
+            const taskDate = task.date.toDate();
             return taskDate.getFullYear() === currentDate.getFullYear() &&
                    taskDate.getMonth() === currentDate.getMonth() &&
                    taskDate.getDate() === currentDate.getDate();
         });
-    }, [tasks, currentDate]);
+    }, [tasks, currentDate, viewMode]);
 
     const formattedDate = new Intl.DateTimeFormat('es-ES', {
         weekday: 'long',
@@ -40,63 +47,40 @@ const PlannerScreen = ({ user }) => {
     }).format(currentDate);
 
     return (
-        <Box bg="gray.50" minH="100vh" p={{ base: 4, sm: 6, lg: 8 }}>
-            <Container maxW="3xl">
-                <Box id="content-to-export" bg="gray.50">
-                    <Flex as="header" justify="space-between" align="center" mb={6}>
-                        <Heading as="h1" size={{ base: 'lg', sm: 'xl' }} color="gray.800">
-                            Mi Día a Día
+        <Box bg="gray.50" minH="100vh" py="8">
+            <Container maxW="container.xl">
+                <VStack spacing={8} align="stretch">
+                    <Flex justify="space-between" align="center">
+                        <Heading as="h1" size="xl">
+                            Hola, {user?.displayName || 'Usuario'}
                         </Heading>
-                        <Button colorScheme="red" onClick={() => signOut(auth)}>
+                        <Button colorScheme="red" onClick={() => auth.signOut()}>
                             Cerrar Sesión
                         </Button>
                     </Flex>
-                    
-                    <VStack spacing={6} align="stretch">
-                        <Flex 
-                            bg="white" 
-                            p={4} 
-                            borderRadius="xl" 
-                            boxShadow="md" 
-                            justify="space-between" 
-                            align="center"
-                        >
-                            <Button onClick={() => changeDate(-1)}>Anterior</Button>
-                            <Heading as="h2" size="lg" textAlign="center" color="blue.700">
-                                {formattedDate}
-                            </Heading>
-                            <Button onClick={() => changeDate(1)}>Siguiente</Button>
-                        </Flex>
 
-                        <AddTaskForm onAddTask={handleAddTask} />
+                    <DateNavigator 
+                        currentDate={currentDate}
+                        viewMode={viewMode}
+                        setViewMode={setViewMode}
+                        changeDate={changeDate}
+                    />
 
-                        <Box>
-                            {filteredTasks.length > 0 ? (
-                                <VStack spacing={4} align="stretch">
-                                    {filteredTasks.map(task => (
-                                        <TaskCard key={task.id} task={task} onUpdate={updateTask} onDelete={deleteTask} />
-                                    ))}
-                                </VStack>
-                            ) : (
-                                <Box 
-                                    textAlign="center" 
-                                    p={10} 
-                                    bg="white" 
-                                    borderRadius="xl" 
-                                    boxShadow="md" 
-                                    borderWidth="1px"
-                                >
-                                    <Text color="gray.500">No hay tareas para este día.</Text>
-                                    <Text color="gray.500" mt={2}>¡Añade una para empezar a planificar tu bienestar!</Text>
-                                </Box>
-                            )}
-                        </Box>
-                    </VStack>
-                </Box>
-                <Flex justify="center" mt={8}>
-                    <ExportButton elementId="content-to-export" />
-                </Flex>
+                    {viewMode === 'day' && <AddTaskForm onAddTask={handleAddTask} />}
+
+                    <TaskList tasks={filteredTasks} onUpdate={updateTask} onDelete={deleteTask} />
+
+                    <WellnessMetrics />
+
+                    <DailyReflection />
+
+                    <Button colorScheme="green">Descargar Vista como PDF</Button>
+
+                </VStack>
             </Container>
+            <Box as="footer" py="4" mt="8" textAlign="center" borderTop="1px" borderColor="gray.200">
+                <Text fontSize="sm">©2025. Desarrollado por AppLab by Conseller. Todos los derechos reservados.</Text>
+            </Box>
         </Box>
     );
 };

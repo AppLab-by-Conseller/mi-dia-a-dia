@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
-import { Box, Button, Heading, Input, Stack } from '@chakra-ui/react';
+import { Box, Button, Heading, Input, Select, Stack } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 
 const AddTaskForm = ({ onAddTask }) => {
     const [text, setText] = useState('');
     const [time, setTime] = useState('');
+    const [duration, setDuration] = useState('');
+    const [recurrence, setRecurrence] = useState('none');
 
     const handleSubmit = (e) => {
         e.preventDefault();
         if (text.trim()) {
-            onAddTask(text, time);
+            onAddTask(text, time, duration, recurrence);
             setText('');
             setTime('');
+            setDuration('');
+            setRecurrence('none');
         }
     };
 
@@ -34,19 +38,34 @@ const AddTaskForm = ({ onAddTask }) => {
                     type="time"
                     value={time}
                     onChange={(e) => setTime(e.target.value)}
-                    flexShrink={0}
+                    w={{ base: '100%', md: 'auto' }}
                 />
                 <Input
-                    type="text"
+                    placeholder="Ej: Preparar el desayuno"
                     value={text}
                     onChange={(e) => setText(e.target.value)}
-                    placeholder="Ej: Preparar el desayuno"
+                    flex="1"
                 />
+                <Input
+                    type="number"
+                    placeholder="Duración (min)"
+                    value={duration}
+                    onChange={(e) => setDuration(e.target.value)}
+                    w={{ base: '100%', md: '140px' }}
+                />
+                <Select
+                    value={recurrence}
+                    onChange={(e) => setRecurrence(e.target.value)}
+                    w={{ base: '100%', md: 'auto' }}
+                >
+                    <option value="none">No se repite</option>
+                    <option value="daily">Todos los días</option>
+                    <option value="weekly">Cada semana</option>
+                </Select>
                 <Button
                     type="submit"
                     colorScheme="blue"
                     leftIcon={<AddIcon />}
-                    px={8}
                 >
                     Añadir
                 </Button>
