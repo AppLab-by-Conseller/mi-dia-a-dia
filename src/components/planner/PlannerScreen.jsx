@@ -35,7 +35,11 @@ const PlannerScreen = ({ user }) => {
         const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
         return tasks.filter(task => {
-            const taskDate = task.date.toDate();
+            // La fecha ya es un objeto Date de JS gracias a la transformación en useFirestore
+            if (!task.date || typeof task.date.getFullYear !== 'function') {
+                return false; // Ignorar tareas sin fecha válida
+            }
+            const taskDate = task.date; 
             if (viewMode === 'day') {
                 return taskDate.getFullYear() === currentDate.getFullYear() &&
                        taskDate.getMonth() === currentDate.getMonth() &&
