@@ -68,7 +68,7 @@ const PlannerScreen = ({ user }) => {
 
     return (
         <Box bg="gray.50" minH="100vh" py="8">
-            <Container maxW="container.xl">
+            <Container maxW="full" px={{ base: 4, md: 8 }}>
                 <VStack spacing={8} align="stretch">
                     <Flex justify="space-between" align="center">
                         <Heading as="h1" size="xl">
