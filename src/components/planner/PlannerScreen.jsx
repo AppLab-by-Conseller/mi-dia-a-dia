@@ -31,11 +31,27 @@ const PlannerScreen = ({ user }) => {
     };
 
     const filteredTasks = useMemo(() => {
+        const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+        const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+
         return tasks.filter(task => {
             const taskDate = task.date.toDate();
-            return taskDate.getFullYear() === currentDate.getFullYear() &&
-                   taskDate.getMonth() === currentDate.getMonth() &&
-                   taskDate.getDate() === currentDate.getDate();
+            if (viewMode === 'day') {
+                return taskDate.getFullYear() === currentDate.getFullYear() &&
+                       taskDate.getMonth() === currentDate.getMonth() &&
+                       taskDate.getDate() === currentDate.getDate();
+            }
+            if (viewMode === 'week') {
+                const startOfWeek = new Date(currentDate);
+                startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + (startOfWeek.getDay() === 0 ? -6 : 1));
+                const endOfWeek = new Date(startOfWeek);
+                endOfWeek.setDate(endOfWeek.getDate() + 6);
+                return taskDate >= startOfWeek && taskDate <= endOfWeek;
+            }
+            if (viewMode === 'month') {
+                return taskDate >= startOfMonth && taskDate <= endOfMonth;
+            }
+            return false;
         });
     }, [tasks, currentDate, viewMode]);
 
@@ -68,7 +84,13 @@ const PlannerScreen = ({ user }) => {
 
                     {viewMode === 'day' && <AddTaskForm onAddTask={handleAddTask} />}
 
-                    <TaskList tasks={filteredTasks} onUpdate={updateTask} onDelete={deleteTask} />
+                    <TaskList 
+                        tasks={filteredTasks} 
+                        onUpdate={updateTask} 
+                        onDelete={deleteTask} 
+                        viewMode={viewMode}
+                        currentDate={currentDate}
+                    />
 
                     <WellnessMetrics />
 
