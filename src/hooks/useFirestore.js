@@ -14,6 +14,7 @@ import {
     getDocs,
     writeBatch
 } from 'firebase/firestore';
+import { isTaskOnDate } from '../utils/recurrence';
 
 export function useFirestore(userId) {
     const [tasks, setTasks] = useState([]);
