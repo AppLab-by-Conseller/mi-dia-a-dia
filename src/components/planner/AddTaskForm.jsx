@@ -17,6 +17,9 @@ const AddTaskForm = ({ onAddTask }) => {
     const [editTaskData, setEditTaskData] = useState(null);
     const { isOpen, onOpen, onClose } = useDisclosure();
 
+    // Agregar la fecha seleccionada (hoy por defecto)
+    const selectedDate = new Date();
+
     const handleCustomSave = (data) => {
         setCustomRecurrence(data);
         setRecurrence('custom');
@@ -100,6 +103,7 @@ const AddTaskForm = ({ onAddTask }) => {
                     value={recurrence}
                     onChange={setRecurrence}
                     onOpenCustom={onOpen}
+                    selectedDate={selectedDate}
                 />
                 <Button
                     type="submit"
