@@ -51,19 +51,19 @@ const RecurrenceModal = ({ isOpen, onClose, onSave, initial }) => {
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="lg">
       <ModalOverlay />
-      <ModalContent>
+      <ModalContent maxW="lg">
         <ModalHeader>Recurrencia personalizada</ModalHeader>
         <ModalBody>
           <Stack spacing={4}>
             <RadioGroup value={frequency} onChange={setFrequency}>
-              <Stack direction="row">
+              <Stack direction="row" wrap="wrap">
                 <Radio value="daily">Día</Radio>
                 <Radio value="weekly">Semana</Radio>
                 <Radio value="monthly">Mes</Radio>
                 <Radio value="yearly">Año</Radio>
               </Stack>
             </RadioGroup>
-            <Stack direction="row" align="center">
+            <Stack direction="row" align="center" wrap="wrap">
               <Text>Repetir cada</Text>
               <NumberInput min={1} value={interval} onChange={(_, v) => setInterval(v)} w="80px">
                 <NumberInputField />
@@ -76,7 +76,7 @@ const RecurrenceModal = ({ isOpen, onClose, onSave, initial }) => {
             </Stack>
             {frequency === 'weekly' && (
               <CheckboxGroup value={days} onChange={setDays}>
-                <Stack direction="row">
+                <Stack direction="row" wrap="wrap">
                   {daysOfWeek.map(d => (
                     <Checkbox key={d.value} value={d.value}>{d.label}</Checkbox>
                   ))}
@@ -84,7 +84,7 @@ const RecurrenceModal = ({ isOpen, onClose, onSave, initial }) => {
               </CheckboxGroup>
             )}
             {frequency === 'monthly' && (
-              <Stack direction="row" align="center">
+              <Stack direction="row" align="center" wrap="wrap">
                 <Select value={weekOfMonth} onChange={e => setWeekOfMonth(Number(e.target.value))} w="120px">
                   {weeksOfMonth.map(w => (
                     <option key={w.value} value={w.value}>{w.label}</option>
@@ -99,7 +99,7 @@ const RecurrenceModal = ({ isOpen, onClose, onSave, initial }) => {
               </Stack>
             )}
             <RadioGroup value={endType} onChange={setEndType}>
-              <Stack direction="row">
+              <Stack direction="row" wrap="wrap">
                 <Radio value="never">Nunca</Radio>
                 <Radio value="date">El</Radio>
                 <Radio value="count">Después de</Radio>
@@ -109,7 +109,7 @@ const RecurrenceModal = ({ isOpen, onClose, onSave, initial }) => {
               <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} w="200px" />
             )}
             {endType === 'count' && (
-              <Stack direction="row" align="center">
+              <Stack direction="row" align="center" wrap="wrap">
                 <NumberInput min={1} value={occurrences} onChange={(_, v) => setOccurrences(v)} w="80px">
                   <NumberInputField />
                   <NumberInputStepper>
