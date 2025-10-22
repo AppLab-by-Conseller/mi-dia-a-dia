@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import {
     Box, Button, Container, Flex, Heading, Text, VStack,
     Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton,
-    useDisclosure, FormControl, FormLabel, Input, Select, Textarea, SimpleGrid, IconButton
+    useDisclosure, FormControl, FormLabel, Input, Select, Textarea, SimpleGrid, IconButton,
+    AlertDialog, AlertDialogBody, AlertDialogFooter, AlertDialogHeader, AlertDialogContent, AlertDialogOverlay
 } from '@chakra-ui/react';
 import { EditIcon, Trash2 } from 'lucide-react';
 import { FaRegSadTear, FaRegFrown, FaRegMeh, FaRegSmile, FaRegGrinBeam } from 'react-icons/fa';
@@ -24,7 +25,9 @@ const completionStatusOptions = {
 
 const TaskCard = ({ task, onUpdate, onDelete }) => {
     const { isOpen, onOpen, onClose } = useDisclosure();
+    const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
     const [editedTask, setEditedTask] = useState(task);
+    const cancelRef = React.useRef();
 
     useEffect(() => {
         setEditedTask(task);
@@ -37,7 +40,7 @@ const TaskCard = ({ task, onUpdate, onDelete }) => {
 
     const handleDelete = () => {
         onDelete(task.id);
-        onClose();
+        onDeleteClose();
     }
 
     const handleInputChange = (e) => {
@@ -77,10 +80,37 @@ const TaskCard = ({ task, onUpdate, onDelete }) => {
                     </Box>
                     <Flex gap={2}>
                         <IconButton icon={<EditIcon size="16" />} aria-label="Editar" size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); onOpen(); }} />
-                        <IconButton icon={<Trash2 size="16" />} aria-label="Eliminar" size="sm" variant="ghost" colorScheme="red" onClick={(e) => { e.stopPropagation(); onDelete(task.id); }} />
+                        <IconButton icon={<Trash2 size="16" />} aria-label="Eliminar" size="sm" variant="ghost" colorScheme="red" onClick={(e) => { e.stopPropagation(); onDeleteOpen(); }} />
                     </Flex>
                 </Flex>
             </Box>
+
+            <AlertDialog
+                isOpen={isDeleteOpen}
+                leastDestructiveRef={cancelRef}
+                onClose={onDeleteClose}
+            >
+                <AlertDialogOverlay>
+                    <AlertDialogContent>
+                        <AlertDialogHeader fontSize="lg" fontWeight="bold">
+                            Eliminar Tarea
+                        </AlertDialogHeader>
+
+                        <AlertDialogBody>
+                            ¿Estás seguro de que quieres eliminar esta tarea? Esta acción no se puede deshacer.
+                        </AlertDialogBody>
+
+                        <AlertDialogFooter>
+                            <Button ref={cancelRef} onClick={onDeleteClose}>
+                                Cancelar
+                            </Button>
+                            <Button colorScheme="red" onClick={handleDelete} ml={3}>
+                                Eliminar
+                            </Button>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialogOverlay>
+            </AlertDialog>
 
             <Modal isOpen={isOpen} onClose={onClose} size="xl">
                 <ModalOverlay />
@@ -113,6 +143,14 @@ const TaskCard = ({ task, onUpdate, onDelete }) => {
                                 </Select>
                             </FormControl>
                             <FormControl>
+                                <FormLabel>Estado</FormLabel>
+                                <Select name="completionState" value={editedTask.completionState} onChange={handleInputChange}>
+                                    {Object.entries(completionStatusOptions).map(([key, { label }]) => (
+                                        <option key={key} value={key}>{label}</option>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                            <FormControl>
                                 <FormLabel>¿Cómo te sentiste?</FormLabel>
                                 <Flex justify="space-around">
                                     {Object.entries(moodOptions).map(([key, { icon, color, label }]) => (
@@ -120,43 +158,30 @@ const TaskCard = ({ task, onUpdate, onDelete }) => {
                                             <IconButton
                                                 icon={icon}
                                                 isRound
-                                                aria-label={label}
-                                                onClick={() => handleMoodChange(key)}
-                                                color={color}
-                                                bg={task.mood === key ? 'blue.100' : 'gray.100'}
-                                                transform={task.mood === key ? 'scale(1.15)' : 'none'}
-                                                _hover={{ bg: 'gray.200' }}
                                                 size="lg"
+                                                aria-label={label}
+                                                onClick={() => setEditedTask(prev => ({ ...prev, mood: key }))}
+                                                color={color}
+                                                bg={editedTask.mood === key ? 'blue.100' : 'gray.100'}
+                                                transform={editedTask.mood === key ? 'scale(1.1)' : 'none'}
                                             />
                                             <Text fontSize="xs">{label}</Text>
                                         </VStack>
                                     ))}
                                 </Flex>
                             </FormControl>
-                             <FormControl>
-                                <FormLabel>Estado de la tarea</FormLabel>
-                                <Select value={task.completionState} onChange={handleStatusChange}>
-                                    {Object.entries(completionStatusOptions).map(([key, { label }]) => (
-                                        <option key={key} value={key}>{label}</option>
-                                    ))}
-                                </Select>
-                            </FormControl>
                             <FormControl>
                                 <FormLabel>Comentarios</FormLabel>
-                                <Textarea placeholder="Añade un comentario..." value={task.comments || ''} onChange={handleCommentsChange} />
+                                <Textarea name="comments" value={editedTask.comments || ''} onChange={handleInputChange} />
                             </FormControl>
                         </VStack>
                     </ModalBody>
+
                     <ModalFooter>
                         <Button variant="ghost" mr={3} onClick={onClose}>
-                            Cerrar
+                            Cancelar
                         </Button>
-                        <Button colorScheme="red" mr={3} onClick={handleDelete}>
-                            Eliminar Tarea
-                        </Button>
-                        <Button colorScheme="blue" onClick={handleUpdate}>
-                            Guardar Cambios
-                        </Button>
+                        <Button colorScheme="blue" onClick={handleUpdate}>Guardar Cambios</Button>
                     </ModalFooter>
                 </ModalContent>
             </Modal>

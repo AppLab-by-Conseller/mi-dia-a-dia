@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { auth } from '../firebase/config';
+import { auth, db } from '../firebase/config';
 import { onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 
 export function useAuth() {
     const [user, setUser] = useState(null);
@@ -9,7 +10,13 @@ export function useAuth() {
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (user) {
-                setUser(user);
+                const userDocRef = doc(db, "users", user.uid);
+                const userDoc = await getDoc(userDocRef);
+                if (userDoc.exists()) {
+                    setUser({ ...user, ...userDoc.data() });
+                } else {
+                    setUser(user);
+                }
             } else {
                 // Si no hay usuario, intentamos el login con token si está disponible
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -30,5 +37,5 @@ export function useAuth() {
         return () => unsubscribe();
     }, []);
 
-    return { user, loading };
+    return { user, loading, auth }; // Devolver también el objeto auth
 }

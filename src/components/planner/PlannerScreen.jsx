@@ -8,107 +8,99 @@ import TaskList from './TaskList';
 import WellnessMetrics from './WellnessMetrics';
 import DailyReflection from './DailyReflection';
 import DateNavigator from './DateNavigator';
-import { Box, Button, Container, Flex, Heading, Text, VStack } from '@chakra-ui/react';
+import { Button, Flex, Heading, VStack } from '@chakra-ui/react';
 import ExportButton from './ExportButton';
+import { es } from 'date-fns/locale';
 
 const PlannerScreen = ({ user }) => {
-    const [currentDate, setCurrentDate] = useState(new Date());
-    const [viewMode, setViewMode] = useState('day'); // 'day', 'week', 'month'
-    const { tasks, addTask, updateTask, deleteTask, loading } = useFirestore(user?.uid);
-    
-    const handleAddTask = (text, scheduledTime, duration, recurrence) => {
-        addTask(text, scheduledTime, currentDate, parseInt(duration, 10) || 0, recurrence);
-    };
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState('day'); // 'day', 'week', 'month'
+  const { tasks, addTask, updateTask, deleteTask } = useFirestore(user.uid);
 
-    const changeDate = (amount) => {
-        setCurrentDate(prevDate => {
-            const newDate = new Date(prevDate);
-            if (viewMode === 'day') newDate.setDate(newDate.getDate() + amount);
-            if (viewMode === 'week') newDate.setDate(newDate.getDate() + amount * 7);
-            if (viewMode === 'month') newDate.setMonth(newDate.getMonth() + amount);
-            return newDate;
-        });
-    };
+  const handleAddTask = (text, scheduledTime, duration, recurrence) => {
+    addTask(text, scheduledTime, currentDate, parseInt(duration, 10) || 0, recurrence);
+  };
 
-    const filteredTasks = useMemo(() => {
-        const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-        const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+  const changeDate = (amount) => {
+    setCurrentDate(prevDate => {
+      const newDate = new Date(prevDate);
+      if (viewMode === 'day') newDate.setDate(newDate.getDate() + amount);
+      if (viewMode === 'week') newDate.setDate(newDate.getDate() + amount * 7);
+      if (viewMode === 'month') newDate.setMonth(newDate.getMonth() + amount);
+      return newDate;
+    });
+  };
 
-        return tasks.filter(task => {
-            // La fecha ya es un objeto Date de JS gracias a la transformación en useFirestore
-            if (!task.date || typeof task.date.getFullYear !== 'function') {
-                return false; // Ignorar tareas sin fecha válida
-            }
-            const taskDate = task.date; 
-            if (viewMode === 'day') {
-                return taskDate.getFullYear() === currentDate.getFullYear() &&
-                       taskDate.getMonth() === currentDate.getMonth() &&
-                       taskDate.getDate() === currentDate.getDate();
-            }
-            if (viewMode === 'week') {
-                const startOfWeek = new Date(currentDate);
-                startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + (startOfWeek.getDay() === 0 ? -6 : 1));
-                const endOfWeek = new Date(startOfWeek);
-                endOfWeek.setDate(endOfWeek.getDate() + 6);
-                return taskDate >= startOfWeek && taskDate <= endOfWeek;
-            }
-            if (viewMode === 'month') {
-                return taskDate >= startOfMonth && taskDate <= endOfMonth;
-            }
-            return false;
-        });
-    }, [tasks, currentDate, viewMode]);
+  const handleSetDate = (date) => {
+    setCurrentDate(date);
+  };
 
-    const formattedDate = new Intl.DateTimeFormat('es-ES', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    }).format(currentDate);
+  const filteredTasks = useMemo(() => {
+    const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
-    return (
-        <Box bg="gray.50" minH="100vh" py="8">
-            <Container maxW="full" px={{ base: 4, md: 8 }}>
-                <VStack spacing={8} align="stretch">
-                    <Flex justify="space-between" align="center">
-                        <Heading as="h1" size="xl">
-                            Hola, {user?.displayName || 'Usuario'}
-                        </Heading>
-                        <Button colorScheme="red" onClick={() => auth.signOut()}>
-                            Cerrar Sesión
-                        </Button>
-                    </Flex>
+    return tasks.filter(task => {
+      // La fecha ya es un objeto Date de JS gracias a la transformación en useFirestore
+      if (!task.date || typeof task.date.getFullYear !== 'function') {
+        return false; // Ignorar tareas sin fecha válida
+      }
+      const taskDate = task.date; 
+      if (viewMode === 'day') {
+        return taskDate.getFullYear() === currentDate.getFullYear() &&
+               taskDate.getMonth() === currentDate.getMonth() &&
+               taskDate.getDate() === currentDate.getDate();
+      }
+      if (viewMode === 'week') {
+        const startOfWeek = new Date(currentDate);
+        startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + (startOfWeek.getDay() === 0 ? -6 : 1));
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(endOfWeek.getDate() + 6);
+        return taskDate >= startOfWeek && taskDate <= endOfWeek;
+      }
+      if (viewMode === 'month') {
+        return taskDate >= startOfMonth && taskDate <= endOfMonth;
+      }
+      return false;
+    });
+  }, [tasks, currentDate, viewMode]);
 
-                    <DateNavigator 
-                        currentDate={currentDate}
-                        viewMode={viewMode}
-                        setViewMode={setViewMode}
-                        changeDate={changeDate}
-                    />
+  const formattedDate = new Intl.DateTimeFormat('es-ES', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  }).format(currentDate);
 
-                    {viewMode === 'day' && <AddTaskForm onAddTask={handleAddTask} />}
+  return (
+    <VStack spacing={6} align="stretch" w="full" h="full" bg="white" p={6} borderRadius="lg" boxShadow="sm">
+      <DateNavigator 
+        currentDate={currentDate}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+        changeDate={changeDate}
+        setCurrentDate={handleSetDate}
+      />
 
-                    <TaskList 
-                        tasks={filteredTasks} 
-                        onUpdate={updateTask} 
-                        onDelete={deleteTask} 
-                        viewMode={viewMode}
-                        currentDate={currentDate}
-                    />
+      {viewMode === 'day' && <AddTaskForm onAddTask={handleAddTask} />}
 
-                    <WellnessMetrics />
+      <TaskList 
+        tasks={filteredTasks} 
+        onUpdate={updateTask} 
+        onDelete={deleteTask} 
+        viewMode={viewMode}
+        currentDate={currentDate}
+        setCurrentDate={setCurrentDate}
+        setViewMode={setViewMode}
+      />
 
-                    <DailyReflection />
-
-                    <Button colorScheme="green">Descargar Vista como PDF</Button>
-
-                </VStack>
-            </Container>
-            <Box as="footer" py="4" mt="8" textAlign="center" borderTop="1px" borderColor="gray.200">
-                <Text fontSize="sm">©2025. Desarrollado por AppLab by Conseller. Todos los derechos reservados.</Text>
-            </Box>
-        </Box>
-    );
+      {viewMode === 'day' && (
+        <>
+          <WellnessMetrics tasks={filteredTasks} />
+          <DailyReflection userId={user?.uid} date={currentDate} />
+        </>
+      )}
+    </VStack>
+  );
 };
 
 export default PlannerScreen;

@@ -1,12 +1,24 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import AuthScreen from './components/auth/AuthScreen';
 import PlannerScreen from './components/planner/PlannerScreen';
+import AccountScreen from './components/account/AccountScreen';
+import SideMenu from './components/layout/SideMenu';
+import { Box, Flex, Spinner, Center, VStack } from '@chakra-ui/react';
 
 // Componente para rutas privadas
 const PrivateRoute = ({ user, children }) => {
-    return user ? children : <Navigate to="/login" />;
+    return user ? (
+        <Box minH="100vh" display="flex" flexDirection="row">
+            <Box as="aside" w={{ base: 'full', md: '250px' }} minW="250px" zIndex={2}>
+                <SideMenu user={user} />
+            </Box>
+            <Box as="main" flex="1" minW={0} bg="gray.50" p={{ base: 2, md: 8 }}>
+                {children}
+            </Box>
+        </Box>
+    ) : <Navigate to="/login" />;
 };
 
 // Componente principal de la aplicación
@@ -15,9 +27,12 @@ export default function App() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <p className="text-lg text-gray-600">Cargando...</p>
-            </div>
+            <Center h="100vh">
+                <VStack>
+                    <Spinner size="xl" color="blue.500" />
+                    <p>Cargando...</p>
+                </VStack>
+            </Center>
         );
     }
 
@@ -32,8 +47,16 @@ export default function App() {
                     </PrivateRoute>
                 } 
             />
+            <Route 
+                path="/account" 
+                element={
+                    <PrivateRoute user={user}>
+                        <AccountScreen />
+                    </PrivateRoute>
+                } 
+            />
         </Routes>
     );
 }
 
-// Force redeploy
+// Forzar actualización de caché

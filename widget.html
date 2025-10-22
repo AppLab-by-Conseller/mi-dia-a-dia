@@ -104,7 +104,7 @@
                     return;
                 }
 
-                const q = db.collection(tasksCollectionPath).where("userId", "==", userId);
+                const q = db.collection(tasksCollectionPath);
                 
                 const unsubscribe = q.onSnapshot((snapshot) => {
                     const tasksData = snapshot.docs.map(doc => ({

@@ -1,8 +1,9 @@
-import { Grid, GridItem, Box, Text } from "@chakra-ui/react";
+import { Grid, GridItem, Box, Text, VStack } from "@chakra-ui/react";
 import TaskCard from "./TaskCard";
 import { useMemo } from "react";
+import { isTaskOnDate } from '../../utils/recurrence';
 
-const MonthView = ({ tasks, onUpdate, onDelete, currentDate }) => {
+const MonthView = ({ tasks, onUpdate, onDelete, currentDate, setCurrentDate, setViewMode }) => {
   const monthDays = useMemo(() => {
     const days = [];
     const year = currentDate.getFullYear();
@@ -35,45 +36,42 @@ const MonthView = ({ tasks, onUpdate, onDelete, currentDate }) => {
     return days;
   }, [currentDate]);
 
-  const tasksByDay = useMemo(() => {
-    const tasksMap = {};
-    monthDays.forEach(({ date }) => {
-      tasksMap[date.toDateString()] = [];
-    });
-    tasks.forEach(task => {
-      const taskDate = task.date.toDate().toDateString();
-      if (tasksMap[taskDate]) {
-        tasksMap[taskDate].push(task);
-      }
-    });
-    return tasksMap;
-  }, [tasks, monthDays]);
+  const handleDayClick = (date) => {
+    setCurrentDate(date);
+    setViewMode('day');
+  };
 
   return (
-    <Box>
+    <Box w="full">
         <Grid templateColumns="repeat(7, 1fr)" gap={1} mb={2} textAlign="center" fontWeight="bold">
-            {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map(day => <GridItem key={day}>{day}</GridItem>)}
+            {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map(day => <GridItem key={day} p={2}>{day}</GridItem>)}
         </Grid>
         <Grid templateColumns="repeat(7, 1fr)" gap={1}>
         {monthDays.map(({ date, isCurrentMonth }) => (
             <GridItem
             key={date.toISOString()}
             bg={isCurrentMonth ? "white" : "gray.50"}
-            p={1}
+            p={2}
             borderRadius="md"
             border="1px"
-            borderColor={isCurrentMonth ? "gray.200" : "gray.100"}
+            borderColor={isCurrentMonth ? "gray.200" : "transparent"}
             minH="120px"
+            cursor="pointer"
+            _hover={{ bg: 'gray.100' }}
+            onClick={() => handleDayClick(date)}
+            display="flex"
+            flexDirection="column"
             >
             <Text
                 fontSize="sm"
                 fontWeight="bold"
                 color={isCurrentMonth ? "gray.700" : "gray.400"}
+                alignSelf="flex-start"
             >
                 {date.getDate()}
             </Text>
-            <Box>
-                {(tasksByDay[date.toDateString()] || []).map((task) => (
+            <Box flex="1" w="full" overflowY="auto" mt={2}>
+                {tasks.filter(task => isTaskOnDate(task, date)).map((task) => (
                 <Box key={task.id} bg="blue.100" p={1} borderRadius="sm" fontSize="xs" mb={1} overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
                     {task.text}
                 </Box>
