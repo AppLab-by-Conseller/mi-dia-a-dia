@@ -9,14 +9,14 @@ const EditRecurrenceModal = ({ isOpen, onClose, onApply, onApplyAll }) => (
       <ModalBody>
         <p>Este evento es parte de una serie recurrente. ¿Quieres aplicar los cambios solo a este evento o a este y todos los posteriores?</p>
       </ModalBody>
-      <ModalFooter display="flex" flexDirection="column" gap={2}>
-        <Button colorScheme="blue" width="100%" mb={2} onClick={onApply}>
+      <ModalFooter>
+        <Button colorScheme="blue" mr={3} onClick={onApply}>
           Solo este evento
         </Button>
-        <Button colorScheme="green" width="100%" mb={2} onClick={onApplyAll}>
+        <Button colorScheme="green" onClick={onApplyAll}>
           Este y todos los posteriores
         </Button>
-        <Button variant="ghost" width="100%" onClick={onClose}>
+        <Button variant="ghost" onClick={onClose} ml={3}>
           Cancelar
         </Button>
       </ModalFooter>

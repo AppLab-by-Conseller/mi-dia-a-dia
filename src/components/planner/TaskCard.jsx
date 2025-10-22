@@ -7,6 +7,7 @@ import {
 } from '@chakra-ui/react';
 import { EditIcon, Trash2 } from 'lucide-react';
 import { FaRegSadTear, FaRegFrown, FaRegMeh, FaRegSmile, FaRegGrinBeam } from 'react-icons/fa';
+import EditRecurrenceModal from './EditRecurrenceModal';
 
 const moodOptions = {
     terrible: { icon: <FaRegSadTear />, color: 'red.500', label: 'Terrible' },
@@ -27,6 +28,8 @@ const TaskCard = ({ task, onUpdate, onDelete }) => {
     const { isOpen, onOpen, onClose } = useDisclosure();
     const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
     const [editedTask, setEditedTask] = useState(task);
+    const [showEditRecurrenceModal, setShowEditRecurrenceModal] = useState(false);
+    const [showDeleteRecurrenceModal, setShowDeleteRecurrenceModal] = useState(false);
     const cancelRef = React.useRef();
 
     useEffect(() => {
@@ -34,14 +37,42 @@ const TaskCard = ({ task, onUpdate, onDelete }) => {
     }, [task]);
 
     const handleUpdate = () => {
-        onUpdate(task.id, editedTask);
-        onClose();
+        if (editedTask.recurrence && editedTask.recurrence !== 'no-repite') {
+            setShowEditRecurrenceModal(true);
+        } else {
+            onUpdate(task.id, editedTask);
+            onClose();
+        }
     };
 
     const handleDelete = () => {
-        onDelete(task.id);
+        if (task.recurrenceGroupId) {
+            setShowDeleteRecurrenceModal(true);
+        } else {
+            onDelete(task.id);
+            onDeleteClose();
+        }
+    };
+
+    const handleApplyDelete = () => {
+        // Eliminar solo esta instancia
+        onDelete(task.id, { onlyThis: true });
+        setShowDeleteRecurrenceModal(false);
         onDeleteClose();
-    }
+    };
+
+    const handleApplyDeleteAll = async () => {
+        // Eliminar esta y todas las posteriores de la serie
+        if (task.recurrenceGroupId && task.date) {
+            await onDelete(task.id, {
+                allFollowing: true,
+                recurrenceGroupId: task.recurrenceGroupId,
+                date: task.date
+            });
+        }
+        setShowDeleteRecurrenceModal(false);
+        onDeleteClose();
+    };
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -58,6 +89,20 @@ const TaskCard = ({ task, onUpdate, onDelete }) => {
     
     const handleCommentsChange = (e) => {
         onUpdate(task.id, { comments: e.target.value });
+    };
+
+    const handleApplyEdit = () => {
+        // Editar solo esta instancia
+        onUpdate(task.id, editedTask, { onlyThis: true });
+        setShowEditRecurrenceModal(false);
+        onClose();
+    };
+
+    const handleApplyEditAll = () => {
+        // Editar esta y todas las posteriores
+        onUpdate(task.id, editedTask, { allFollowing: true });
+        setShowEditRecurrenceModal(false);
+        onClose();
     };
 
     const currentStatus = completionStatusOptions[task.completionState];
@@ -135,11 +180,14 @@ const TaskCard = ({ task, onUpdate, onDelete }) => {
                             </SimpleGrid>
                              <FormControl>
                                 <FormLabel>Recurrencia</FormLabel>
-                                <Select name="recurrence" value={editedTask.recurrence || 'no-repite'} onChange={handleInputChange}>
-                                    <option value="no-repite">No se repite</option>
-                                    <option value="diaria">Diaria</option>
-                                    <option value="semanal">Semanal</option>
-                                    <option value="mensual">Mensual</option>
+                                <Select name="recurrence" value={editedTask.recurrence || 'none'} onChange={handleInputChange}>
+                                    <option value="none">No se repite</option>
+                                    <option value="daily">Todos los días</option>
+                                    <option value="weekly">Cada semana, el mismo día</option>
+                                    <option value="monthly">Todos los meses, el mismo n° [día de la semana]</option>
+                                    <option value="yearly">Anualmente, el mismo día</option>
+                                    <option value="weekdays">Todos los días hábiles (lunes a viernes)</option>
+                                    <option value="custom">Personalizado...</option>
                                 </Select>
                             </FormControl>
                             <FormControl>
@@ -185,6 +233,20 @@ const TaskCard = ({ task, onUpdate, onDelete }) => {
                     </ModalFooter>
                 </ModalContent>
             </Modal>
+
+            <EditRecurrenceModal
+                isOpen={showEditRecurrenceModal}
+                onClose={() => setShowEditRecurrenceModal(false)}
+                onApply={handleApplyEdit}
+                onApplyAll={handleApplyEditAll}
+            />
+
+            <EditRecurrenceModal
+                isOpen={showDeleteRecurrenceModal}
+                onClose={() => setShowDeleteRecurrenceModal(false)}
+                onApply={handleApplyDelete}
+                onApplyAll={handleApplyDeleteAll}
+            />
         </>
     );
 };

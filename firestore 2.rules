@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Regla 1: Permite a un usuario leer y escribir su propio documento de perfil.
+    // Esto es para el rol y la suscripción.
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Regla 2: Permite al usuario acceso total a CUALQUIER documento
+    // dentro de CUALQUIER subcolección bajo su propio documento de usuario.
+    // El `{path=**}` es un comodín recursivo que coincide con toda la jerarquía.
+    match /users/{userId}/{path=**} {
+      allow read, write, create, update, delete: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}

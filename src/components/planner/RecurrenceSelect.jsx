@@ -1,17 +1,29 @@
 import React, { useState } from 'react';
 import { Select, Button } from '@chakra-ui/react';
+import { format, getDay } from 'date-fns';
+import { es } from 'date-fns/locale';
 
-const recurrenceOptions = [
-  { value: 'none', label: 'No se repite' },
-  { value: 'daily', label: 'Todos los días' },
-  { value: 'weekly', label: 'Cada semana, el mismo día' },
-  { value: 'monthly', label: 'Todos los meses, el mismo n° [día de la semana]' },
-  { value: 'yearly', label: 'Anualmente, el mismo día' },
-  { value: 'weekdays', label: 'Todos los días hábiles (lunes a viernes)' },
-  { value: 'custom', label: 'Personalizado…' },
-];
+const dayNames = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 
-const RecurrenceSelect = ({ value, onChange, onOpenCustom }) => {
+const RecurrenceSelect = ({ value, onChange, onOpenCustom, selectedDate }) => {
+  let monthlyLabel = 'Todos los meses, el mismo n° [día de la semana]';
+  if (selectedDate) {
+    const dateObj = new Date(selectedDate);
+    const dayName = dayNames[dateObj.getDay()];
+    const weekOfMonth = Math.ceil(dateObj.getDate() / 7);
+    monthlyLabel = `Todos los meses, el ${weekOfMonth}º ${dayName}`;
+  }
+
+  const recurrenceOptions = [
+    { value: 'none', label: 'No se repite' },
+    { value: 'daily', label: 'Todos los días' },
+    { value: 'weekly', label: 'Cada semana, el mismo día' },
+    { value: 'monthly', label: monthlyLabel },
+    { value: 'yearly', label: 'Anualmente, el mismo día' },
+    { value: 'weekdays', label: 'Todos los días hábiles (lunes a viernes)' },
+    { value: 'custom', label: 'Personalizado…' },
+  ];
+
   return (
     <Select
       value={value}
