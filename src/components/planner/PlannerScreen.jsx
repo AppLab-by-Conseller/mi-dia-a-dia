@@ -81,7 +81,7 @@ const PlannerScreen = ({ user }) => {
         setCurrentDate={handleSetDate}
       />
 
-      {viewMode === 'day' && <AddTaskForm onAddTask={handleAddTask} />}
+      {viewMode === 'day' && <AddTaskForm onAddTask={handleAddTask} selectedDate={currentDate} />}
 
       <TaskList 
         tasks={filteredTasks} 

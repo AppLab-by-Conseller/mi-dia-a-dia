@@ -5,7 +5,7 @@ import RecurrenceSelect from './RecurrenceSelect';
 import RecurrenceModal from './RecurrenceModal';
 import EditRecurrenceModal from './EditRecurrenceModal';
 
-const AddTaskForm = ({ onAddTask }) => {
+const AddTaskForm = ({ onAddTask, selectedDate }) => {
     const [text, setText] = useState('');
     const [time, setTime] = useState('');
     const [duration, setDuration] = useState('');
@@ -16,9 +16,6 @@ const AddTaskForm = ({ onAddTask }) => {
     const [editTaskId, setEditTaskId] = useState(null);
     const [editTaskData, setEditTaskData] = useState(null);
     const { isOpen, onOpen, onClose } = useDisclosure();
-
-    // Agregar la fecha seleccionada (hoy por defecto)
-    const selectedDate = new Date();
 
     const handleCustomSave = (data) => {
         setCustomRecurrence(data);
