@@ -37,7 +37,12 @@ const TaskCard = ({ task, onUpdate, onDelete }) => {
     }, [task]);
 
     const handleUpdate = () => {
-        if (editedTask.recurrence && editedTask.recurrence !== 'no-repite') {
+        // Detectar si se modificó algún campo estructural
+        const structuralFields = ['text', 'scheduledTime', 'duration', 'date', 'recurrence'];
+        const changedStructural = structuralFields.some(
+            key => editedTask[key] !== task[key]
+        );
+        if (changedStructural && editedTask.recurrence && editedTask.recurrence !== 'no-repite') {
             setShowEditRecurrenceModal(true);
         } else {
             onUpdate(task.id, editedTask);
