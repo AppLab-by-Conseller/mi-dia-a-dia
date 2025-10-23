@@ -12,14 +12,14 @@ const EditRecurrenceModal = ({ isOpen, onClose, onApply, onApplyAll }) => (
         </Text>
       </ModalBody>
       <ModalFooter>
-        <Stack direction={{ base: 'column', md: 'row' }} spacing={2} w="100%">
-          <Button colorScheme="blue" isFullWidth minW={0} onClick={onApply} whiteSpace="normal">
+        <Stack direction="column" spacing={3} width="100%">
+          <Button onClick={onApply} colorScheme="blue" isFullWidth>
             Solo este evento
           </Button>
-          <Button colorScheme="green" isFullWidth minW={0} onClick={onApplyAll} whiteSpace="normal">
+          <Button onClick={onApplyAll} colorScheme="green" isFullWidth>
             Este y todos los posteriores
           </Button>
-          <Button variant="ghost" isFullWidth minW={0} onClick={onClose} whiteSpace="normal">
+          <Button onClick={onClose} variant="ghost" isFullWidth>
             Cancelar
           </Button>
         </Stack>
