@@ -78,8 +78,8 @@ export function useFirestore(userId) {
                                 text,
                                 scheduledTime,
                                 duration,
-                                recurrence: 'none',
-                                recurrenceConfig: null,
+                                recurrence: recurrenceValue,
+                                recurrenceConfig,
                                 recurrenceGroupId,
                                 completionState: 'pending',
                                 mood: null,
@@ -100,8 +100,8 @@ export function useFirestore(userId) {
                                 text,
                                 scheduledTime,
                                 duration,
-                                recurrence: 'none',
-                                recurrenceConfig: null,
+                                recurrence: recurrenceValue,
+                                recurrenceConfig,
                                 recurrenceGroupId,
                                 completionState: 'pending',
                                 mood: null,
@@ -157,7 +157,6 @@ export function useFirestore(userId) {
     const updateTask = async (id, updates, options = {}) => {
         if (options.allFollowing) {
             // Buscar todas las tareas recurrentes con el mismo grupo/serie y fecha >= a la seleccionada
-            // Suponiendo que cada tarea recurrente tiene un campo recurrenceGroupId y date
             const q = query(
                 collection(db, tasksCollectionPath),
                 where('recurrenceGroupId', '==', updates.recurrenceGroupId),
