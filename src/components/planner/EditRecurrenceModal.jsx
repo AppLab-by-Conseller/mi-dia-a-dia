@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Text } from '@chakra-ui/react';
+import { Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Text, Stack } from '@chakra-ui/react';
 
 const EditRecurrenceModal = ({ isOpen, onClose, onApply, onApplyAll }) => (
   <Modal isOpen={isOpen} onClose={onClose} isCentered>
@@ -12,15 +12,17 @@ const EditRecurrenceModal = ({ isOpen, onClose, onApply, onApplyAll }) => (
         </Text>
       </ModalBody>
       <ModalFooter>
-        <Button colorScheme="blue" mr={3} onClick={onApply}>
-          Solo este evento
-        </Button>
-        <Button colorScheme="green" onClick={onApplyAll}>
-          Este y todos los posteriores
-        </Button>
-        <Button variant="ghost" onClick={onClose} ml={3}>
-          Cancelar
-        </Button>
+        <Stack direction={{ base: 'column', sm: 'row' }} spacing={2} w="100%">
+          <Button colorScheme="blue" flex={1} minW={0} onClick={onApply} whiteSpace="normal">
+            Solo este evento
+          </Button>
+          <Button colorScheme="green" flex={1} minW={0} onClick={onApplyAll} whiteSpace="normal">
+            Este y todos los posteriores
+          </Button>
+          <Button variant="ghost" flex={1} minW={0} onClick={onClose} whiteSpace="normal">
+            Cancelar
+          </Button>
+        </Stack>
       </ModalFooter>
     </ModalContent>
   </Modal>
