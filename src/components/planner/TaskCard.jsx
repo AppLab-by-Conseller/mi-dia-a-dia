@@ -114,9 +114,17 @@ const TaskCard = ({ task, onUpdate, onDelete }) => {
         });
         // Actualizar el evento actual con todos los cambios
         onUpdate(task.id, editedTask);
-        // Actualizar los posteriores solo con los estructurales
-        if (Object.keys(structuralUpdates).length > 0) {
-            onUpdate(task.id, structuralUpdates, { allFollowing: true });
+        // Validar que recurrenceGroupId y date existen antes de propagar
+        if (
+            Object.keys(structuralUpdates).length > 0 &&
+            task.recurrenceGroupId &&
+            task.date
+        ) {
+            onUpdate(task.id, {
+                ...structuralUpdates,
+                recurrenceGroupId: task.recurrenceGroupId,
+                date: task.date
+            }, { allFollowing: true });
         }
         setShowEditRecurrenceModal(false);
         onClose();
