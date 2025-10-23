@@ -104,8 +104,20 @@ const TaskCard = ({ task, onUpdate, onDelete }) => {
     };
 
     const handleApplyEditAll = () => {
-        // Editar esta y todas las posteriores
-        onUpdate(task.id, editedTask, { allFollowing: true });
+        // Solo los campos estructurales se aplican a todos los posteriores
+        const structuralFields = ['text', 'scheduledTime', 'duration', 'date', 'recurrence'];
+        const structuralUpdates = {};
+        structuralFields.forEach(key => {
+            if (editedTask[key] !== task[key]) {
+                structuralUpdates[key] = editedTask[key];
+            }
+        });
+        // Actualizar el evento actual con todos los cambios
+        onUpdate(task.id, editedTask);
+        // Actualizar los posteriores solo con los estructurales
+        if (Object.keys(structuralUpdates).length > 0) {
+            onUpdate(task.id, structuralUpdates, { allFollowing: true });
+        }
         setShowEditRecurrenceModal(false);
         onClose();
     };
