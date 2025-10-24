@@ -4,6 +4,7 @@ import { useAuth } from './hooks/useAuth';
 import AuthScreen from './components/auth/AuthScreen';
 import PlannerScreen from './components/planner/PlannerScreen';
 import AccountScreen from './components/account/AccountScreen';
+import MembershipScreen from './components/MembershipScreen';
 import SideMenu from './components/layout/SideMenu';
 import { Box, Flex, Spinner, Center, VStack } from '@chakra-ui/react';
 
@@ -52,6 +53,14 @@ export default function App() {
                 element={
                     <PrivateRoute user={user}>
                         <AccountScreen />
+                    </PrivateRoute>
+                } 
+            />
+            <Route 
+                path="/membership" 
+                element={
+                    <PrivateRoute user={user}>
+                        <MembershipScreen />
                     </PrivateRoute>
                 } 
             />

@@ -11,6 +11,7 @@ import DateNavigator from './DateNavigator';
 import { Button, Flex, Heading, VStack } from '@chakra-ui/react';
 import ExportButton from './ExportButton';
 import { es } from 'date-fns/locale';
+import { isTaskOnDate } from '../../utils/recurrence';
 
 const PlannerScreen = ({ user }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -36,33 +37,8 @@ const PlannerScreen = ({ user }) => {
   };
 
   const filteredTasks = useMemo(() => {
-    const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-    const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-
-    return tasks.filter(task => {
-      // La fecha ya es un objeto Date de JS gracias a la transformación en useFirestore
-      if (!task.date || typeof task.date.getFullYear !== 'function') {
-        return false; // Ignorar tareas sin fecha válida
-      }
-      const taskDate = task.date; 
-      if (viewMode === 'day') {
-        return taskDate.getFullYear() === currentDate.getFullYear() &&
-               taskDate.getMonth() === currentDate.getMonth() &&
-               taskDate.getDate() === currentDate.getDate();
-      }
-      if (viewMode === 'week') {
-        const startOfWeek = new Date(currentDate);
-        startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + (startOfWeek.getDay() === 0 ? -6 : 1));
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(endOfWeek.getDate() + 6);
-        return taskDate >= startOfWeek && taskDate <= endOfWeek;
-      }
-      if (viewMode === 'month') {
-        return taskDate >= startOfMonth && taskDate <= endOfMonth;
-      }
-      return false;
-    });
-  }, [tasks, currentDate, viewMode]);
+    return tasks.filter(task => isTaskOnDate(task, currentDate));
+  }, [tasks, currentDate]);
 
   const formattedDate = new Intl.DateTimeFormat('es-ES', {
     weekday: 'long',
@@ -84,7 +60,7 @@ const PlannerScreen = ({ user }) => {
       {viewMode === 'day' && <AddTaskForm onAddTask={handleAddTask} selectedDate={currentDate} />}
 
       <TaskList 
-        tasks={filteredTasks} 
+        tasks={tasks} // pasa todas las tareas, el filtrado se hace en TaskList
         onUpdate={updateTask} 
         onDelete={deleteTask} 
         viewMode={viewMode}

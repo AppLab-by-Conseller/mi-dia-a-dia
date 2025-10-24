@@ -63,59 +63,79 @@ export function useFirestore(userId) {
             }
             if (recurrenceValue && recurrenceValue !== 'none') {
                 recurrenceGroupId = Math.random().toString(36).substr(2, 9) + Date.now();
-                const instances = [];
                 const startDate = new Date(currentDate);
                 let endDate = new Date(currentDate);
+                let dates = [];
+                // Generar fechas únicas según recurrencia
                 if (recurrenceConfig?.endType === 'date' && recurrenceConfig?.endDate) {
                     endDate = new Date(recurrenceConfig.endDate);
-                } else if (recurrenceConfig?.endType === 'count' && recurrenceConfig?.occurrences) {
-                    // Generar instancias según el número de ocurrencias
+                }
+                if (recurrenceConfig?.endType === 'count' && recurrenceConfig?.occurrences) {
                     let count = 0;
-                    let d = new Date(startDate);
                     while (count < recurrenceConfig.occurrences) {
-                        if (isTaskOnDate({ recurrence: recurrenceValue, recurrenceConfig, date: startDate }, new Date(d))) {
-                            instances.push({
-                                text,
-                                scheduledTime,
-                                duration,
-                                recurrence: recurrenceValue,
-                                recurrenceConfig,
-                                recurrenceGroupId,
-                                completionState: 'pending',
-                                mood: null,
-                                comments: '',
-                                createdAt: serverTimestamp(),
-                                date: Timestamp.fromDate(new Date(d)),
-                            });
-                            count++;
+                        let d = new Date(startDate); // SIEMPRE desde el inicio
+                        if (recurrenceValue === 'daily') {
+                            d.setDate(startDate.getDate() + count);
+                            dates.push(new Date(d));
+                        } else if (recurrenceValue === 'weekly') {
+                            d.setDate(startDate.getDate() + count * 7);
+                            dates.push(new Date(d));
+                        } else if (recurrenceValue === 'weekdays') {
+                            d.setDate(startDate.getDate() + count);
+                            if (d.getDay() >= 1 && d.getDay() <= 5) dates.push(new Date(d));
+                        } else if (recurrenceValue === 'monthly') {
+                            d.setMonth(startDate.getMonth() + count);
+                            dates.push(new Date(d));
+                        } else if (recurrenceValue === 'yearly') {
+                            d.setFullYear(startDate.getFullYear() + count);
+                            dates.push(new Date(d));
+                        } else if (recurrenceValue === 'custom') {
+                            d.setDate(startDate.getDate() + count);
+                            if (isTaskOnDate({ recurrence: recurrenceValue, recurrenceConfig, date: d }, d)) dates.push(new Date(d));
                         }
-                        d.setDate(d.getDate() + 1);
+                        count++;
                     }
                 } else {
-                    // Por defecto, generar instancias hasta 1 mes adelante
-                    endDate.setMonth(endDate.getMonth() + 1);
-                    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-                        if (isTaskOnDate({ recurrence: recurrenceValue, recurrenceConfig, date: startDate }, new Date(d))) {
-                            instances.push({
-                                text,
-                                scheduledTime,
-                                duration,
-                                recurrence: recurrenceValue,
-                                recurrenceConfig,
-                                recurrenceGroupId,
-                                completionState: 'pending',
-                                mood: null,
-                                comments: '',
-                                createdAt: serverTimestamp(),
-                                date: Timestamp.fromDate(new Date(d)),
-                            });
+                    // Por defecto, generar fechas hasta 1 mes adelante
+                    const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+                    for (let i = 0; i <= daysDiff; i++) {
+                        let d = new Date(startDate);
+                        d.setDate(startDate.getDate() + i);
+                        if (recurrenceValue === 'daily') {
+                            dates.push(new Date(d));
+                        } else if (recurrenceValue === 'weekly') {
+                            if (d.getDay() === startDate.getDay()) dates.push(new Date(d));
+                        } else if (recurrenceValue === 'weekdays') {
+                            if (d.getDay() >= 1 && d.getDay() <= 5) dates.push(new Date(d));
+                        } else if (recurrenceValue === 'monthly') {
+                            if (d.getDate() === startDate.getDate()) dates.push(new Date(d));
+                        } else if (recurrenceValue === 'yearly') {
+                            if (d.getDate() === startDate.getDate() && d.getMonth() === startDate.getMonth()) dates.push(new Date(d));
+                        } else if (recurrenceValue === 'custom') {
+                            if (isTaskOnDate({ recurrence: recurrenceValue, recurrenceConfig, date: d }, d)) dates.push(new Date(d));
                         }
                     }
                 }
-                for (const instance of instances) {
-                    await addDoc(collection(db, tasksCollectionPath), instance);
+                // Eliminar fechas duplicadas usando solo YYYY-MM-DD
+                const uniqueDateStrs = Array.from(new Set(dates.map(d => d.toISOString().slice(0,10))));
+                for (const dateStr of uniqueDateStrs) {
+                    const dateObj = new Date(dateStr);
+                    await addDoc(collection(db, tasksCollectionPath), {
+                        text,
+                        scheduledTime,
+                        duration,
+                        recurrence: recurrenceValue,
+                        recurrenceConfig,
+                        recurrenceGroupId,
+                        completionState: 'pending',
+                        mood: null,
+                        comments: '',
+                        createdAt: serverTimestamp(),
+                        date: Timestamp.fromDate(dateObj),
+                    });
                 }
             } else {
+                // Tarea única: solo una vez en ese día
                 await addDoc(collection(db, tasksCollectionPath), {
                     text,
                     scheduledTime,
@@ -127,36 +147,21 @@ export function useFirestore(userId) {
                     mood: null,
                     comments: '',
                     createdAt: serverTimestamp(),
-                    date: Timestamp.fromDate(currentDate),
+                    date: Timestamp.fromDate(new Date(currentDate)),
                 });
             }
         } catch (error) {
             console.error("Error al añadir la tarea:", error);
-            // Fallback por si serverTimestamp() falla en el entorno de build
-            if (error instanceof ReferenceError) {
-                console.log("serverTimestamp no definido, usando new Date() como fallback.");
-                try {
-                    await addDoc(collection(db, tasksCollectionPath), {
-                        text,
-                        scheduledTime,
-                        duration,
-                        recurrence,
-                        completionState: 'pending',
-                        mood: null,
-                        comments: '',
-                        createdAt: new Date(), // Fallback a la fecha del cliente
-                        date: Timestamp.fromDate(currentDate),
-                    });
-                } catch (fallbackError) {
-                    console.error("Error en el fallback al añadir la tarea:", fallbackError);
-                }
-            }
         }
     };
 
     const updateTask = async (id, updates, options = {}) => {
         if (options.allFollowing) {
-            // Buscar todas las tareas recurrentes con el mismo grupo/serie y fecha >= a la seleccionada
+            // INFALIBLE: Solo actualiza instancias posteriores (nunca anteriores)
+            if (!updates.recurrenceGroupId || !updates.date) {
+                console.warn('Faltan recurrenceGroupId o date para edición masiva.');
+                return;
+            }
             const q = query(
                 collection(db, tasksCollectionPath),
                 where('recurrenceGroupId', '==', updates.recurrenceGroupId),
@@ -179,13 +184,33 @@ export function useFirestore(userId) {
         }
     };
 
+    const cleanRecurrenceDuplicates = async () => {
+        // Busca todas las tareas recurrentes y elimina duplicados dejando solo una por día por grupo
+        const q = query(collection(db, tasksCollectionPath), where('recurrenceGroupId', '!=', null));
+        const snapshot = await getDocs(q);
+        const tasks = {};
+        snapshot.forEach(docSnap => {
+            const data = docSnap.data();
+            const group = data.recurrenceGroupId;
+            const dateStr = data.date.toDate().toISOString().slice(0, 10);
+            if (!tasks[group]) tasks[group] = {};
+            if (!tasks[group][dateStr]) {
+                tasks[group][dateStr] = docSnap.id;
+            } else {
+                // Duplicado, eliminar
+                deleteDoc(doc(db, tasksCollectionPath, docSnap.id));
+            }
+        });
+    };
+
     const deleteTask = async (id, options = {}) => {
         if (options.allFollowing && options.recurrenceGroupId && options.date) {
-            // Eliminar todas las instancias de la serie a partir de la fecha
+            // Elimina solo esta y las posteriores (no las anteriores)
+            const fromTimestamp = options.date instanceof Timestamp ? options.date : Timestamp.fromDate(new Date(options.date));
             const q = query(
                 collection(db, tasksCollectionPath),
                 where('recurrenceGroupId', '==', options.recurrenceGroupId),
-                where('date', '>=', options.date)
+                where('date', '>=', fromTimestamp)
             );
             const snapshot = await getDocs(q);
             const batch = writeBatch(db);

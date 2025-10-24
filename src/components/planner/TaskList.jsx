@@ -16,7 +16,7 @@ const TaskList = ({ tasks, onUpdate, onDelete, viewMode, currentDate, setCurrent
     return <MonthView tasks={tasks} onUpdate={onUpdate} onDelete={onDelete} currentDate={currentDate} setCurrentDate={setCurrentDate} setViewMode={setViewMode} />;
   }
 
-  // Day view
+  // Vista diaria
   if (filteredTasks.length === 0) {
     return (
       <Box textAlign="center" p={10} borderRadius="lg">

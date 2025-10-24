@@ -96,6 +96,9 @@ const SideMenu = ({ user }) => {
                 <NavItem icon={<User size={20} />} to="/account">
                     Mi Cuenta
                 </NavItem>
+                <NavItem icon={<Star size={20} />} to="/membership">
+                    Membresía
+                </NavItem>
 
                 <Spacer />
 
