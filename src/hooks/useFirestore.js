@@ -157,11 +157,19 @@ export function useFirestore(userId) {
 
     const updateTask = async (id, updates, options = {}) => {
         if (options.allFollowing) {
-            // INFALIBLE: Solo actualiza instancias posteriores (nunca anteriores)
+            // Solo actualiza instancias posteriores (nunca anteriores)
             if (!updates.recurrenceGroupId || !updates.date) {
                 console.warn('Faltan recurrenceGroupId o date para edición masiva.');
                 return;
             }
+            // Filtrar solo campos estructurales
+            const allowedFields = ['text', 'scheduledTime', 'duration', 'recurrence', 'recurrenceConfig'];
+            const structuralUpdates = {};
+            allowedFields.forEach(key => {
+                if (key in updates) {
+                    structuralUpdates[key] = updates[key];
+                }
+            });
             const q = query(
                 collection(db, tasksCollectionPath),
                 where('recurrenceGroupId', '==', updates.recurrenceGroupId),
@@ -170,7 +178,7 @@ export function useFirestore(userId) {
             const snapshot = await getDocs(q);
             const batch = writeBatch(db);
             snapshot.forEach(docSnap => {
-                batch.update(docSnap.ref, updates);
+                batch.update(docSnap.ref, structuralUpdates);
             });
             await batch.commit();
         } else {
@@ -205,12 +213,12 @@ export function useFirestore(userId) {
 
     const deleteTask = async (id, options = {}) => {
         if (options.allFollowing && options.recurrenceGroupId && options.date) {
-            // Elimina solo esta y las posteriores (no las anteriores)
+            // Elimina solo las posteriores (no la actual ni las anteriores)
             const fromTimestamp = options.date instanceof Timestamp ? options.date : Timestamp.fromDate(new Date(options.date));
             const q = query(
                 collection(db, tasksCollectionPath),
                 where('recurrenceGroupId', '==', options.recurrenceGroupId),
-                where('date', '>=', fromTimestamp)
+                where('date', '>', fromTimestamp) // Solo posteriores
             );
             const snapshot = await getDocs(q);
             const batch = writeBatch(db);
@@ -218,6 +226,13 @@ export function useFirestore(userId) {
                 batch.delete(docSnap.ref);
             });
             await batch.commit();
+            // Eliminar la instancia actual por separado
+            const taskRef = doc(db, tasksCollectionPath, id);
+            try {
+                await deleteDoc(taskRef);
+            } catch (error) {
+                console.error("Error al borrar la tarea actual:", error);
+            }
         } else {
             // Eliminar solo esta instancia
             const taskRef = doc(db, tasksCollectionPath, id);

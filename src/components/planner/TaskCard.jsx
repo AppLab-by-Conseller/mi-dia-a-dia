@@ -98,16 +98,15 @@ const TaskCard = ({ task, onUpdate, onDelete }) => {
         setEditedTask(prev => ({ ...prev, [name]: value }));
     };
     
+    // Handlers para cambios no estructurales
     const handleMoodChange = (mood) => {
-        onUpdate(task.id, { mood });
+        onUpdate(task.id, { mood }); // Solo instancia actual
     };
-
     const handleStatusChange = (e) => {
-        onUpdate(task.id, { completionState: e.target.value });
+        onUpdate(task.id, { completionState: e.target.value }); // Solo instancia actual
     };
-    
     const handleCommentsChange = (e) => {
-        onUpdate(task.id, { comments: e.target.value });
+        onUpdate(task.id, { comments: e.target.value }); // Solo instancia actual
     };
 
     const handleApplyEdit = () => {
@@ -117,9 +116,10 @@ const TaskCard = ({ task, onUpdate, onDelete }) => {
         onClose();
     };
 
+    // Handler de edición masiva
     const handleApplyEditAll = () => {
         // Solo los campos estructurales se aplican a todos los posteriores
-        const structuralFields = ['text', 'scheduledTime', 'duration', 'date', 'recurrence'];
+        const structuralFields = ['text', 'scheduledTime', 'duration', 'recurrence', 'recurrenceConfig'];
         const structuralUpdates = {};
         structuralFields.forEach(key => {
             if (editedTask[key] !== task[key]) {
@@ -127,8 +127,8 @@ const TaskCard = ({ task, onUpdate, onDelete }) => {
             }
         });
         // Actualizar el evento actual con todos los cambios
-        onUpdate(task.id, editedTask);
-        // Validar que recurrenceGroupId y date existen antes de propagar
+        onUpdate(task.id, editedTask); // Solo instancia actual
+        // Propagar solo los estructurales
         if (
             Object.keys(structuralUpdates).length > 0 &&
             task.recurrenceGroupId &&
