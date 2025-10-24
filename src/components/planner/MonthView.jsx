@@ -3,6 +3,14 @@ import TaskCard from "./TaskCard";
 import { useMemo } from "react";
 import { isTaskOnDate } from '../../utils/recurrence';
 
+const moodOptions = {
+  happy: { color: "yellow.200" },
+  sad: { color: "blue.200" },
+  angry: { color: "red.200" },
+  surprised: { color: "orange.200" },
+  neutral: { color: "gray.200" },
+};
+
 const MonthView = ({ tasks, onUpdate, onDelete, currentDate, setCurrentDate, setViewMode }) => {
   const monthDays = useMemo(() => {
     const days = [];
@@ -71,11 +79,18 @@ const MonthView = ({ tasks, onUpdate, onDelete, currentDate, setCurrentDate, set
                 {date.getDate()}
             </Text>
             <Box flex="1" w="full" overflowY="auto" mt={2}>
-                {tasks.filter(task => isTaskOnDate(task, date)).map((task) => (
-                <Box key={task.id} bg="blue.100" p={1} borderRadius="sm" fontSize="xs" mb={1} overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
-                    {task.text}
-                </Box>
-                ))}
+                {tasks.filter(task => isTaskOnDate(task, date)).map((task) => {
+                    // Color de emoción
+                    let bgColor = "blue.100";
+                    if (task.mood && moodOptions[task.mood]) {
+                        bgColor = moodOptions[task.mood].color;
+                    }
+                    return (
+                        <Box key={task.id} bg={bgColor} p={1} borderRadius="sm" fontSize="xs" mb={1} overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+                            {task.text}
+                        </Box>
+                    );
+                })}
             </Box>
             </GridItem>
         ))}

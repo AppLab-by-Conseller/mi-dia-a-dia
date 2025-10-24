@@ -69,10 +69,24 @@ const TaskCard = ({ task, onUpdate, onDelete }) => {
     const handleApplyDeleteAll = async () => {
         // Eliminar esta y todas las posteriores de la serie
         if (task.recurrenceGroupId && task.date) {
+            // Asegura que la fecha se envía como Timestamp
+            let dateToSend = task.date;
+            if (dateToSend && dateToSend.toDate) {
+                dateToSend = dateToSend;
+            } else if (typeof dateToSend === 'string' || dateToSend instanceof Date) {
+                // Si es string o Date, conviértelo a Date y luego a Timestamp
+                try {
+                    const { Timestamp } = require('firebase/firestore');
+                    dateToSend = Timestamp.fromDate(new Date(dateToSend));
+                } catch (e) {
+                    // Si no está disponible, envía como Date
+                    dateToSend = new Date(dateToSend);
+                }
+            }
             await onDelete(task.id, {
                 allFollowing: true,
                 recurrenceGroupId: task.recurrenceGroupId,
-                date: task.date
+                date: dateToSend
             });
         }
         setShowDeleteRecurrenceModal(false);
@@ -130,7 +144,12 @@ const TaskCard = ({ task, onUpdate, onDelete }) => {
         onClose();
     };
 
-    const currentStatus = completionStatusOptions[task.completionState];
+    // Determinar color de borde según emoción
+    const borderColor = task.mood && moodOptions[task.mood] ? moodOptions[task.mood].color : 'gray.200';
+    // Determinar sombra si hay emoción
+    const boxShadow = task.mood && moodOptions[task.mood] ? `0 0 0 2px ${moodOptions[task.mood].color}` : undefined;
+    // Estado visual
+    const status = completionStatusOptions[task.completionState];
 
     return (
         <>
@@ -138,8 +157,10 @@ const TaskCard = ({ task, onUpdate, onDelete }) => {
                 p={4}
                 bg="white"
                 shadow="md"
-                borderWidth="1px"
+                borderWidth="2px"
                 borderRadius="lg"
+                borderColor={borderColor}
+                boxShadow={boxShadow}
                 _hover={{ shadow: "lg", cursor: "pointer" }}
                 onClick={onOpen}
             >
@@ -147,8 +168,20 @@ const TaskCard = ({ task, onUpdate, onDelete }) => {
                     <Box>
                         {task.scheduledTime && <Text fontSize="sm" color="gray.500">{task.scheduledTime}</Text>}
                         <Text fontWeight="bold">{task.text}</Text>
+                        {/* Duración visible */}
+                        {task.duration && <Text fontSize="sm" color="gray.600">Duración: {task.duration} min</Text>}
+                        {/* Estado visual */}
+                        {status && (
+                            <Text fontSize="xs" fontWeight="bold" bg={status.bg} color={status.color} px={2} py={1} borderRadius="md" display="inline-block" mt={1}>
+                                {status.label}
+                            </Text>
+                        )}
                     </Box>
-                    <Flex gap={2}>
+                    <Flex gap={2} align="center">
+                        {/* Icono de emoción */}
+                        {task.mood && moodOptions[task.mood] && (
+                            <Box>{moodOptions[task.mood].icon}</Box>
+                        )}
                         <IconButton icon={<EditIcon size="16" />} aria-label="Editar" size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); onOpen(); }} />
                         <IconButton icon={<Trash2 size="16" />} aria-label="Eliminar" size="sm" variant="ghost" colorScheme="red" onClick={(e) => { e.stopPropagation(); onDeleteOpen(); }} />
                     </Flex>
