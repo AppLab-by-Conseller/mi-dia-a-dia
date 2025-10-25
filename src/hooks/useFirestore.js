@@ -258,3 +258,5 @@ export function useFirestore(userId) {
 
     return { tasks, addTask, updateTask, deleteTask };
 }
+
+// Trigger deploy: commit tras cambio de permisos de Actions
