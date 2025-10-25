@@ -126,9 +126,9 @@ const TaskCard = ({ task, onUpdate, onDelete }) => {
                 structuralUpdates[key] = editedTask[key];
             }
         });
-        // Actualizar el evento actual con todos los cambios
-        onUpdate(task.id, editedTask); // Solo instancia actual
-        // Propagar solo los estructurales
+        // Actualizar el evento actual SOLO con los estructurales
+        onUpdate(task.id, structuralUpdates); // Solo instancia actual, sin no estructurales
+        // Propagar solo los estructurales a las posteriores
         if (
             Object.keys(structuralUpdates).length > 0 &&
             task.recurrenceGroupId &&
