@@ -233,7 +233,7 @@ export function useFirestore(userId) {
 
     const deleteTask = async (id, options = {}) => {
         if (options.allFollowing && options.recurrenceGroupId && options.date) {
-            // Elimina solo las posteriores (no la actual ni las anteriores)
+            // Asegura que nunca se eliminen instancias anteriores
             const fromTimestamp = options.date instanceof Timestamp ? options.date : Timestamp.fromDate(new Date(options.date));
             const q = query(
                 collection(db, tasksCollectionPath),
@@ -243,7 +243,11 @@ export function useFirestore(userId) {
             const snapshot = await getDocs(q);
             const batch = writeBatch(db);
             snapshot.forEach(docSnap => {
-                batch.delete(docSnap.ref);
+                // Solo elimina si la fecha es estrictamente posterior
+                const docDate = docSnap.data().date;
+                if (docDate > fromTimestamp) {
+                    batch.delete(docSnap.ref);
+                }
             });
             await batch.commit();
             // Eliminar la instancia actual por separado
