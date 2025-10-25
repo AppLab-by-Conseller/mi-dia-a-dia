@@ -22,34 +22,42 @@ export function useFirestore(userId) {
     // CORRECCIÓN: La ruta ahora apunta directamente a la subcolección 'tasks' del usuario.
     const tasksCollectionPath = `users/${userId}/tasks`;
 
+    // Filtra duplicados: solo una instancia por recurrenceGroupId y fecha
+    const filterUniqueTasks = (tasksArray) => {
+        const seen = {};
+        return tasksArray.filter(task => {
+            if (!task.recurrenceGroupId) return true;
+            const key = `${task.recurrenceGroupId}_${task.date.toISOString().slice(0,10)}`;
+            if (seen[key]) return false;
+            seen[key] = true;
+            return true;
+        });
+    };
+
     useEffect(() => {
         if (!userId) {
             setTasks([]);
             return;
         }
-
-        // La consulta ya no necesita un 'where("userId", "==", userId)' porque la ruta de la colección es específica del usuario.
         const q = query(collection(db, tasksCollectionPath));
-        
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const tasksData = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data(),
                 date: doc.data().date.toDate()
             }));
-            tasksData.sort((a, b) => {
-                if (a.scheduledTime && b.scheduledTime) {
-                    return a.scheduledTime.localeCompare(b.scheduledTime);
-                }
-                return a.createdAt - b.createdAt;
-            });
-            setTasks(tasksData);
+            // Filtra duplicados antes de setear
+            setTasks(filterUniqueTasks(tasksData));
         }, (error) => {
             console.error("Error al obtener las tareas:", error);
         });
-
         return () => unsubscribe();
     }, [userId]);
+
+    useEffect(() => {
+        // Ejecuta la limpieza de duplicados al cargar el hook
+        cleanRecurrenceDuplicates();
+    }, []);
 
     const addTask = async (text, scheduledTime, currentDate, duration, recurrence) => {
         if (!userId) return;
@@ -116,23 +124,27 @@ export function useFirestore(userId) {
                         }
                     }
                 }
-                // Eliminar fechas duplicadas usando solo YYYY-MM-DD
+                // Antes de crear, verifica si ya existe una instancia para ese grupo y fecha
                 const uniqueDateStrs = Array.from(new Set(dates.map(d => d.toISOString().slice(0,10))));
                 for (const dateStr of uniqueDateStrs) {
                     const dateObj = new Date(dateStr);
-                    await addDoc(collection(db, tasksCollectionPath), {
-                        text,
-                        scheduledTime,
-                        duration,
-                        recurrence: recurrenceValue,
-                        recurrenceConfig,
-                        recurrenceGroupId,
-                        completionState: 'pending',
-                        mood: null,
-                        comments: '',
-                        createdAt: serverTimestamp(),
-                        date: Timestamp.fromDate(dateObj),
-                    });
+                    const q = query(collection(db, tasksCollectionPath), where('recurrenceGroupId', '==', recurrenceGroupId), where('date', '==', Timestamp.fromDate(dateObj)));
+                    const existing = await getDocs(q);
+                    if (existing.empty) {
+                        await addDoc(collection(db, tasksCollectionPath), {
+                            text,
+                            scheduledTime,
+                            duration,
+                            recurrence: recurrenceValue,
+                            recurrenceConfig,
+                            recurrenceGroupId,
+                            completionState: 'pending',
+                            mood: null,
+                            comments: '',
+                            createdAt: serverTimestamp(),
+                            date: Timestamp.fromDate(dateObj),
+                        });
+                    }
                 }
             } else {
                 // Tarea única: solo una vez en ese día
