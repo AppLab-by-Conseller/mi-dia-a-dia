@@ -170,8 +170,20 @@ export function useFirestore(userId) {
     const updateTask = async (id, updates, options = {}) => {
         // Bloquea propagación de mood, comments y completionState
         const nonPropagableFields = ['mood', 'comments', 'completionState'];
+        const onlyNonPropagable = Object.keys(updates).every(field => nonPropagableFields.includes(field));
         if (options.allFollowing) {
-            // Si el update incluye campos no propagables, los elimina
+            // Si el update incluye SOLO campos no propagables, fuerza edición local
+            if (onlyNonPropagable) {
+                // Edita solo la instancia actual
+                const taskRef = doc(db, tasksCollectionPath, id);
+                try {
+                    await updateDoc(taskRef, updates);
+                } catch (error) {
+                    console.error("Error al actualizar la tarea:", error);
+                }
+                return;
+            }
+            // Si el update incluye campos no propagables mezclados, los elimina
             nonPropagableFields.forEach(field => {
                 if (field in updates) {
                     delete updates[field];
@@ -238,25 +250,14 @@ export function useFirestore(userId) {
             const q = query(
                 collection(db, tasksCollectionPath),
                 where('recurrenceGroupId', '==', options.recurrenceGroupId),
-                where('date', '>', fromTimestamp) // Solo posteriores
+                where('date', '>=', fromTimestamp) // Instancia actual y posteriores
             );
             const snapshot = await getDocs(q);
             const batch = writeBatch(db);
             snapshot.forEach(docSnap => {
-                // Solo elimina si la fecha es estrictamente posterior
-                const docDate = docSnap.data().date;
-                if (docDate > fromTimestamp) {
-                    batch.delete(docSnap.ref);
-                }
+                batch.delete(docSnap.ref);
             });
             await batch.commit();
-            // Eliminar la instancia actual por separado
-            const taskRef = doc(db, tasksCollectionPath, id);
-            try {
-                await deleteDoc(taskRef);
-            } catch (error) {
-                console.error("Error al borrar la tarea actual:", error);
-            }
         } else {
             // Eliminar solo esta instancia
             const taskRef = doc(db, tasksCollectionPath, id);
