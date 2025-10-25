@@ -168,7 +168,15 @@ export function useFirestore(userId) {
     };
 
     const updateTask = async (id, updates, options = {}) => {
+        // Bloquea propagación de mood, comments y completionState
+        const nonPropagableFields = ['mood', 'comments', 'completionState'];
         if (options.allFollowing) {
+            // Si el update incluye campos no propagables, los elimina
+            nonPropagableFields.forEach(field => {
+                if (field in updates) {
+                    delete updates[field];
+                }
+            });
             // Solo actualiza instancias posteriores (nunca anteriores)
             if (!updates.recurrenceGroupId || !updates.date) {
                 console.warn('Faltan recurrenceGroupId o date para edición masiva.');
