@@ -2,17 +2,17 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage'; // Importar getStorage
+import { getStorage } from 'firebase/storage';
 
-// Your web app's Firebase configuration
+// Configuración real de Firebase
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_APIKEY,
-  authDomain: import.meta.env.VITE_AUTHDOMAIN,
-  projectId: import.meta.env.VITE_PROJECTID,
-  storageBucket: import.meta.env.VITE_STORAGEBUCKET,
-  messagingSenderId: import.meta.env.VITE_MESSAGINGSENDERID,
-  appId: import.meta.env.VITE_APPID,
-  measurementId: import.meta.env.VITE_MEASUREMENTID
+  apiKey: "AIzaSyAin1VRoE6dV_7yUek2xVInBArbBUtrkhQ",
+  authDomain: "planificador-personal-575e4.firebaseapp.com",
+  projectId: "planificador-personal-575e4",
+  storageBucket: "planificador-personal-575e4.appspot.com",
+  messagingSenderId: "488328304040",
+  appId: "1:488328304040:web:c26a185f576a71a249b99d",
+  measurementId: "G-KT111WDJKV"
 };
 
 // Initialize Firebase
@@ -20,4 +20,4 @@ const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const storage = getStorage(app); // Exportar storage
+export const storage = getStorage(app);
