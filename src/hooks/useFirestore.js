@@ -170,7 +170,6 @@ export function useFirestore(userId) {
     const updateTask = async (id, updates, options = {}) => {
         // Bloquea propagación de mood, comments y completionState
         const nonPropagableFields = ['mood', 'comments', 'completionState'];
-        const onlyNonPropagable = Object.keys(updates).every(field => nonPropagableFields.includes(field));
         if (options.allFollowing) {
             // Solo actualiza campos estructurales en TODAS las instancias, incluida la actual
             const allowedFields = ['text', 'scheduledTime', 'duration', 'recurrence', 'recurrenceConfig'];
