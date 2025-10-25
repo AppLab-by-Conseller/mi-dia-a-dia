@@ -172,29 +172,7 @@ export function useFirestore(userId) {
         const nonPropagableFields = ['mood', 'comments', 'completionState'];
         const onlyNonPropagable = Object.keys(updates).every(field => nonPropagableFields.includes(field));
         if (options.allFollowing) {
-            // Si el update incluye SOLO campos no propagables, fuerza edición local
-            if (onlyNonPropagable) {
-                // Edita solo la instancia actual
-                const taskRef = doc(db, tasksCollectionPath, id);
-                try {
-                    await updateDoc(taskRef, updates);
-                } catch (error) {
-                    console.error("Error al actualizar la tarea:", error);
-                }
-                return;
-            }
-            // Si el update incluye campos no propagables mezclados, los elimina
-            nonPropagableFields.forEach(field => {
-                if (field in updates) {
-                    delete updates[field];
-                }
-            });
-            // Solo actualiza instancias posteriores (nunca anteriores)
-            if (!updates.recurrenceGroupId || !updates.date) {
-                console.warn('Faltan recurrenceGroupId o date para edición masiva.');
-                return;
-            }
-            // Filtrar solo campos estructurales
+            // Solo actualiza campos estructurales en TODAS las instancias, incluida la actual
             const allowedFields = ['text', 'scheduledTime', 'duration', 'recurrence', 'recurrenceConfig'];
             const structuralUpdates = {};
             allowedFields.forEach(key => {
@@ -202,10 +180,22 @@ export function useFirestore(userId) {
                     structuralUpdates[key] = updates[key];
                 }
             });
+            if (!updates.recurrenceGroupId || !updates.date) {
+                console.warn('Faltan recurrenceGroupId o date para edición masiva.');
+                return;
+            }
+            // Actualiza la instancia actual SOLO con los estructurales
+            const taskRef = doc(db, tasksCollectionPath, id);
+            try {
+                await updateDoc(taskRef, structuralUpdates);
+            } catch (error) {
+                console.error("Error al actualizar la tarea actual:", error);
+            }
+            // Propaga solo los estructurales a las posteriores
             const q = query(
                 collection(db, tasksCollectionPath),
                 where('recurrenceGroupId', '==', updates.recurrenceGroupId),
-                where('date', '>=', updates.date)
+                where('date', '>', updates.date)
             );
             const snapshot = await getDocs(q);
             const batch = writeBatch(db);
@@ -214,7 +204,7 @@ export function useFirestore(userId) {
             });
             await batch.commit();
         } else {
-            // Editar solo esta instancia
+            // Editar solo esta instancia, permite cualquier campo
             const taskRef = doc(db, tasksCollectionPath, id);
             try {
                 await updateDoc(taskRef, updates);
@@ -245,16 +235,18 @@ export function useFirestore(userId) {
 
     const deleteTask = async (id, options = {}) => {
         if (options.allFollowing && options.recurrenceGroupId && options.date) {
-            // Asegura que nunca se eliminen instancias anteriores
+            // Validar que la fecha enviada sea la de la instancia actual
             const fromTimestamp = options.date instanceof Timestamp ? options.date : Timestamp.fromDate(new Date(options.date));
+            // Eliminar solo la instancia actual y posteriores
             const q = query(
                 collection(db, tasksCollectionPath),
                 where('recurrenceGroupId', '==', options.recurrenceGroupId),
-                where('date', '>=', fromTimestamp) // Instancia actual y posteriores
+                where('date', '>=', fromTimestamp)
             );
             const snapshot = await getDocs(q);
             const batch = writeBatch(db);
             snapshot.forEach(docSnap => {
+                // Solo elimina si la fecha es igual o posterior
                 batch.delete(docSnap.ref);
             });
             await batch.commit();
